@@ -1,0 +1,35 @@
+# Binaries
+bin/
+uptimyctl
+*.exe
+
+# Go
+vendor/
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Build
+dist/
+coverage.out
+coverage.html
+
+# Runtime state
+data/
+
+# Config overrides
+configs/local.yaml
