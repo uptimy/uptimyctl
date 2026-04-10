@@ -4,22 +4,16 @@ Command-line tool for managing [upti.my](https://upti.my) workspaces via API key
 
 ## Installation
 
-### Download a release binary
-
-Download the latest binary from [GitHub Releases](https://github.com/uptimy/uptimyctl/releases):
+### Quick install (Linux / macOS)
 
 ```bash
-# macOS (Apple Silicon)
-curl -sL https://github.com/uptimy/uptimyctl/releases/latest/download/uptimyctl_$(curl -s https://api.github.com/repos/uptimy/uptimyctl/releases/latest | grep tag_name | cut -d '"' -f4 | tr -d v)_darwin_arm64.tar.gz | tar xz
-sudo mv uptimyctl /usr/local/bin/
+curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/install.sh | sudo bash
+```
 
-# macOS (Intel)
-curl -sL https://github.com/uptimy/uptimyctl/releases/latest/download/uptimyctl_$(curl -s https://api.github.com/repos/uptimy/uptimyctl/releases/latest | grep tag_name | cut -d '"' -f4 | tr -d v)_darwin_amd64.tar.gz | tar xz
-sudo mv uptimyctl /usr/local/bin/
+To install a specific version:
 
-# Linux (amd64)
-curl -sL https://github.com/uptimy/uptimyctl/releases/latest/download/uptimyctl_$(curl -s https://api.github.com/repos/uptimy/uptimyctl/releases/latest | grep tag_name | cut -d '"' -f4 | tr -d v)_linux_amd64.tar.gz | tar xz
-sudo mv uptimyctl /usr/local/bin/
+```bash
+curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/install.sh | UPTIMYCTL_VERSION=1.0.0 sudo bash
 ```
 
 ### Install with `go install`
@@ -42,6 +36,18 @@ The binary is placed in `bin/uptimyctl`. To install it system-wide:
 
 ```bash
 sudo cp bin/uptimyctl /usr/local/bin/
+```
+
+### Uninstall
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/uninstall.sh | sudo bash
+```
+
+To keep your config (`~/.config/uptimyctl`):
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/uninstall.sh | UPTIMYCTL_KEEP_CONFIG=1 sudo bash
 ```
 
 ## Authentication

@@ -1,3 +1,5 @@
+version: 2
+
 project_name: uptimyctl
 
 before:
@@ -23,11 +25,13 @@ builds:
         -X github.com/uptimy/uptimyctl/internal/version.BuildDate={{.Date}}
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 checksum:
   name_template: "checksums.txt"
