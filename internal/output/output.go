@@ -11,6 +11,10 @@ import (
 
 var Format = "table" // "table" or "json"
 
+func IsJSON() bool {
+	return Format == "json"
+}
+
 func PrintJSON(data interface{}) {
 	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -20,13 +24,17 @@ func PrintJSON(data interface{}) {
 	fmt.Println(string(b))
 }
 
-func PrintRawJSON(raw json.RawMessage) {
+func PrintJSONBytes(raw []byte) {
 	var v interface{}
 	if err := json.Unmarshal(raw, &v); err != nil {
 		fmt.Println(string(raw))
 		return
 	}
 	PrintJSON(v)
+}
+
+func PrintRawJSON(raw json.RawMessage) {
+	PrintJSONBytes(raw)
 }
 
 func PrintTable(headers []string, rows [][]string) {

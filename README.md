@@ -82,6 +82,9 @@ uptimyctl healthchecks list
 uptimyctl hc list                                # alias
 uptimyctl healthchecks get <uuid>
 uptimyctl healthchecks trigger <uuid>            # trigger immediate check
+uptimyctl healthchecks pause <uuid>              # disable/pause healthcheck
+uptimyctl healthchecks resume <uuid>             # enable/resume healthcheck
+uptimyctl healthchecks delete <uuid>             # delete healthcheck
 ```
 
 ### Incidents
@@ -145,6 +148,41 @@ uptimyctl version
 | `--api-url` | API base URL (overrides config and env) |
 | `-o, --output` | Output format: `table` (default), `json` |
 
+## Automation
+
+`uptimyctl` is designed to work well in CI, scripts, and AI-driven tooling.
+
+```bash
+# Non-interactive auth
+UPTIMYCTL_API_KEY=upt_abc123... uptimyctl applications list -o json
+
+# Pause or resume a healthcheck
+UPTIMYCTL_API_KEY=upt_abc123... uptimyctl healthchecks pause <uuid> -o json
+UPTIMYCTL_API_KEY=upt_abc123... uptimyctl healthchecks resume <uuid> -o json
+
+# Export and import workspace configuration
+UPTIMYCTL_API_KEY=upt_prod... uptimyctl export -f monitoring.json -o json
+UPTIMYCTL_API_KEY=upt_staging... uptimyctl import monitoring.json -o json
+
+# Inspect auth or version as JSON
+uptimyctl auth status -o json
+uptimyctl version -o json
+```
+
+Config file location: `~/.config/uptimyctl/config.yaml`
+
+```yaml
+api_url: https://api.upti.my
+api_key: upt_abc123...
+```
+
+Environment variables override the config file:
+
+| Variable | Description |
+|---|---|
+| `UPTIMYCTL_API_KEY` | API key |
+| `UPTIMYCTL_API_URL` | API base URL |
+
 ## Development
 
 ```bash
@@ -159,98 +197,3 @@ make tidy         # go mod tidy
 ## License
 
 See [LICENSE](LICENSE) for details.
-
-### Export / Import
-
-```bash
-# Export workspace config to file
-uptimyctl export -f config.json
-
-# Export to stdout (pipe to jq, etc.)
-uptimyctl export | jq .
-
-# Import config into workspace
-uptimyctl import config.json
-
-# Import from stdin
-cat config.json | uptimyctl import -
-```
-
-## CI/CD Examples
-
-### GitHub Actions — Maintenance Windows
-
-```yaml
-name: Deploy
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Start maintenance
-        id: maint
-        run: |
-          RESULT=$(uptimyctl maintenances create \
-            --start-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --finish-at "$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)" \
-            --description "Deploying ${{ github.sha }}" \
-            -o json)
-          echo "uuid=$(echo $RESULT | jq -r .data.uuid)" >> $GITHUB_OUTPUT
-        env:
-          UPTIMYCTL_API_KEY: ${{ secrets.UPTIMYCTL_API_KEY }}
-
-      - name: Deploy application
-        run: # your deploy steps here
-
-      - name: End maintenance
-        if: always()
-        run: uptimyctl maintenances resolve ${{ steps.maint.outputs.uuid }}
-        env:
-          UPTIMYCTL_API_KEY: ${{ secrets.UPTIMYCTL_API_KEY }}
-```
-
-### Terraform-style Config Management
-
-```bash
-# Export from production workspace
-UPTIMYCTL_API_KEY=upt_prod... uptimyctl export -f monitoring.json
-
-# Import into staging workspace
-UPTIMYCTL_API_KEY=upt_staging... uptimyctl import monitoring.json
-```
-
-## Output Formats
-
-```bash
-uptimyctl applications list                  # table (default)
-uptimyctl applications list -o json          # JSON
-```
-
-## Configuration
-
-Config file location: `~/.config/uptimyctl/config.yaml`
-
-```yaml
-api_url: https://api.upti.my
-api_key: upt_abc123...
-```
-
-Environment variables (override config file):
-
-| Variable | Description |
-|---|---|
-| `UPTIMYCTL_API_KEY` | API key |
-| `UPTIMYCTL_API_URL` | API base URL |
-
-Flag overrides (highest priority):
-
-```bash
-uptimyctl --api-key upt_... --api-url https://custom.api.com applications list
-```
-
-## License
-
-Apache License 2.0 - see [LICENSE](LICENSE).

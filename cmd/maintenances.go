@@ -25,8 +25,8 @@ var maintenancesListCmd = &cobra.Command{
 			exitErr(err)
 		}
 
-		if output.Format == "json" {
-			fmt.Println(string(raw))
+		if output.IsJSON() {
+			output.PrintJSONBytes(raw)
 			return
 		}
 
@@ -145,7 +145,7 @@ var maintenancesDeleteCmd = &cobra.Command{
 		if err != nil {
 			exitErr(err)
 		}
-		fmt.Println("Maintenance deleted.")
+		printActionResult("deleted", "maintenance", args[0])
 	},
 }
 

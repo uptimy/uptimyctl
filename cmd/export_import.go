@@ -39,7 +39,14 @@ Examples:
 			if err := os.WriteFile(file, pretty, 0644); err != nil {
 				exitErr(fmt.Errorf("write file: %w", err))
 			}
-			fmt.Printf("Exported workspace config to %s\n", file)
+			if output.IsJSON() {
+				output.PrintJSON(map[string]interface{}{
+					"ok":   true,
+					"file": file,
+				})
+			} else {
+				fmt.Printf("Exported workspace config to %s\n", file)
+			}
 		} else {
 			fmt.Println(string(pretty))
 		}
@@ -86,7 +93,7 @@ Examples:
 			exitErr(err)
 		}
 
-		if output.Format == "json" {
+		if output.IsJSON() {
 			output.PrintRawJSON(result)
 			return
 		}

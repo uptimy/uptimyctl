@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/uptimy/uptimyctl/internal/client"
@@ -25,8 +24,8 @@ var applicationsListCmd = &cobra.Command{
 			exitErr(err)
 		}
 
-		if output.Format == "json" {
-			fmt.Println(string(raw))
+		if output.IsJSON() {
+			output.PrintJSONBytes(raw)
 			return
 		}
 

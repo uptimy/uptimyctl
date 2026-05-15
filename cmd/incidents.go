@@ -43,9 +43,8 @@ var incidentsListCmd = &cobra.Command{
 			exitErr(err)
 		}
 
-		if output.Format == "json" {
-			data, _ := json.RawMessage(raw).MarshalJSON()
-			fmt.Println(string(data))
+		if output.IsJSON() {
+			output.PrintJSONBytes(raw)
 			return
 		}
 

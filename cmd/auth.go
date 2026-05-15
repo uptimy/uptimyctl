@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/uptimy/uptimyctl/internal/client"
 	"github.com/uptimy/uptimyctl/internal/config"
+	"github.com/uptimy/uptimyctl/internal/output"
 )
 
 var authCmd = &cobra.Command{
@@ -57,6 +58,16 @@ var authLoginCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if output.IsJSON() {
+			output.PrintJSON(map[string]interface{}{
+				"ok":       true,
+				"apiUrl":   cfg.APIURL,
+				"saved":    true,
+				"resource": "auth",
+			})
+			return
+		}
+
 		fmt.Println("Authenticated successfully. Config saved.")
 	},
 }
@@ -69,16 +80,37 @@ var authStatusCmd = &cobra.Command{
 		apiURL := config.GetAPIURL(flagAPIURL)
 
 		if apiKey == "" {
+			if output.IsJSON() {
+				output.PrintJSON(map[string]interface{}{
+					"authenticated": false,
+					"apiUrl":        apiURL,
+				})
+				return
+			}
 			fmt.Println("Not authenticated. Run 'uptimyctl auth login' to configure.")
 			return
 		}
 
 		masked := apiKey[:8] + strings.Repeat("•", 8)
-		fmt.Printf("API URL: %s\n", apiURL)
-		fmt.Printf("API Key: %s\n", masked)
 
 		c := client.New(apiURL, apiKey)
 		_, err := c.Get("/v1/api/applications/", nil)
+		if output.IsJSON() {
+			payload := map[string]interface{}{
+				"authenticated": true,
+				"apiUrl":        apiURL,
+				"apiKeyMasked":  masked,
+				"valid":         err == nil,
+			}
+			if err != nil {
+				payload["error"] = err.Error()
+			}
+			output.PrintJSON(payload)
+			return
+		}
+
+		fmt.Printf("API URL: %s\n", apiURL)
+		fmt.Printf("API Key: %s\n", masked)
 		if err != nil {
 			fmt.Printf("Status:  Invalid (%v)\n", err)
 		} else {
