@@ -9,13 +9,15 @@ import (
 )
 
 const (
-	DefaultAPIURL  = "https://api.upti.my"
-	ConfigFileName = ".uptimyctl"
+	DefaultAPIURL          = "https://api.upti.my"
+	DefaultIncidentsAPIURL = "https://workflows.upti.my"
+	ConfigFileName         = ".uptimyctl"
 )
 
 type Config struct {
-	APIURL string `mapstructure:"api_url"`
-	APIKey string `mapstructure:"api_key"`
+	APIURL          string `mapstructure:"api_url"`
+	IncidentsAPIURL string `mapstructure:"incidents_api_url"`
+	APIKey          string `mapstructure:"api_key"`
 }
 
 func configDir() string {
@@ -36,6 +38,7 @@ func Load() *Config {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(configDir())
 	viper.SetDefault("api_url", DefaultAPIURL)
+	viper.SetDefault("incidents_api_url", DefaultIncidentsAPIURL)
 	viper.SetDefault("api_key", "")
 	viper.SetEnvPrefix("UPTIMYCTL")
 	viper.AutomaticEnv()
@@ -52,6 +55,7 @@ func Save(cfg *Config) error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 	viper.Set("api_url", cfg.APIURL)
+	viper.Set("incidents_api_url", cfg.IncidentsAPIURL)
 	viper.Set("api_key", cfg.APIKey)
 	return viper.WriteConfigAs(configPath())
 }
@@ -78,4 +82,18 @@ func GetAPIURL(flagOverride string) string {
 		return cfg.APIURL
 	}
 	return DefaultAPIURL
+}
+
+func GetIncidentsAPIURL(flagOverride string) string {
+	if flagOverride != "" {
+		return flagOverride
+	}
+	if envURL := os.Getenv("UPTIMYCTL_INCIDENTS_API_URL"); envURL != "" {
+		return envURL
+	}
+	cfg := Load()
+	if cfg.IncidentsAPIURL != "" {
+		return cfg.IncidentsAPIURL
+	}
+	return DefaultIncidentsAPIURL
 }

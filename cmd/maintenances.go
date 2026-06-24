@@ -19,7 +19,7 @@ var maintenancesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List maintenances",
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 		raw, err := c.Get("/v1/api/maintenances/", nil)
 		if err != nil {
 			exitErr(err)
@@ -59,7 +59,7 @@ var maintenancesGetCmd = &cobra.Command{
 	Short: "Get maintenance details",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 		raw, err := c.Get("/v1/api/maintenances/"+args[0], nil)
 		if err != nil {
 			exitErr(err)
@@ -73,7 +73,7 @@ var maintenancesCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Schedule a new maintenance window",
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		startAt, _ := cmd.Flags().GetString("start-at")
 		finishAt, _ := cmd.Flags().GetString("finish-at")
@@ -110,7 +110,7 @@ var maintenancesResolveCmd = &cobra.Command{
 	Short: "Resolve (finish) a maintenance window",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		resolvedAt, _ := cmd.Flags().GetString("resolved-at")
 		if resolvedAt == "" {
@@ -140,7 +140,7 @@ var maintenancesDeleteCmd = &cobra.Command{
 	Short: "Delete a maintenance",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 		_, err := c.Delete("/v1/api/maintenances/" + args[0])
 		if err != nil {
 			exitErr(err)

@@ -19,7 +19,7 @@ var incidentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List incidents",
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		q := url.Values{}
 		if v, _ := cmd.Flags().GetString("status"); v != "" {
@@ -77,7 +77,7 @@ var incidentsGetCmd = &cobra.Command{
 	Short: "Get incident details",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 		raw, err := c.Get("/v1/api/incidents/"+args[0], nil)
 		if err != nil {
 			exitErr(err)
@@ -91,7 +91,7 @@ var incidentsStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Get incident statistics",
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 		raw, err := c.Get("/v1/api/incidents/stats", nil)
 		if err != nil {
 			exitErr(err)
@@ -105,7 +105,7 @@ var incidentsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new incident",
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		title, _ := cmd.Flags().GetString("title")
 		description, _ := cmd.Flags().GetString("description")
@@ -139,7 +139,7 @@ var incidentsUpdateCmd = &cobra.Command{
 	Short: "Update an incident",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		title, _ := cmd.Flags().GetString("title")
 		description, _ := cmd.Flags().GetString("description")
@@ -171,7 +171,7 @@ var incidentsResolveCmd = &cobra.Command{
 	Short: "Resolve an incident (shortcut for update --status Resolved)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		// First fetch the current incident to get required fields
 		raw, err := c.Get("/v1/api/incidents/"+args[0], nil)
@@ -208,7 +208,7 @@ var incidentsAddUpdateCmd = &cobra.Command{
 	Short: "Add an update to an incident",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		c := newClient()
+		c := newIncidentsClient()
 
 		message, _ := cmd.Flags().GetString("message")
 		public, _ := cmd.Flags().GetBool("public")

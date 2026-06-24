@@ -146,6 +146,7 @@ uptimyctl version
 |------|-------------|
 | `--api-key` | API key (overrides config and env) |
 | `--api-url` | API base URL (overrides config and env) |
+| `--incidents-api-url` | API base URL for incidents and maintenances (overrides config and env) |
 | `-o, --output` | Output format: `table` (default), `json` |
 
 ## Automation
@@ -173,8 +174,11 @@ Config file location: `~/.config/uptimyctl/config.yaml`
 
 ```yaml
 api_url: https://api.upti.my
+incidents_api_url: https://workflows.upti.my
 api_key: upt_abc123...
 ```
+
+> `incidents` and `maintenances` are served from a separate domain (`incidents_api_url`); all other resources use `api_url`.
 
 Environment variables override the config file:
 
@@ -182,6 +186,7 @@ Environment variables override the config file:
 |---|---|
 | `UPTIMYCTL_API_KEY` | API key |
 | `UPTIMYCTL_API_URL` | API base URL |
+| `UPTIMYCTL_INCIDENTS_API_URL` | API base URL for incidents and maintenances |
 
 ## Development
 

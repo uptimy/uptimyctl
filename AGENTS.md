@@ -15,6 +15,7 @@ This repository is a Go CLI for managing upti.my workspaces.
 - Config file path: `~/.config/uptimyctl/config.yaml`
 - Default API URL: `https://api.upti.my`
 - Optional override for non-production or local API usage: `--api-url` or `UPTIMYCTL_API_URL`
+- `incidents` and `maintenances` use a separate domain (default `https://workflows.upti.my`), overridable via `--incidents-api-url` or `UPTIMYCTL_INCIDENTS_API_URL`
 
 ## Machine-Friendly Usage
 

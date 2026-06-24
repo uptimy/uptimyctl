@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	flagAPIKey string
-	flagAPIURL string
-	flagOutput string
+	flagAPIKey          string
+	flagAPIURL          string
+	flagIncidentsAPIURL string
+	flagOutput          string
 )
 
 var rootCmd = &cobra.Command{
@@ -31,6 +32,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&flagAPIKey, "api-key", "", "API key (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVar(&flagAPIURL, "api-url", "", "API base URL (overrides config file and env)")
+	rootCmd.PersistentFlags().StringVar(&flagIncidentsAPIURL, "incidents-api-url", "", "API base URL for incidents and maintenances (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVarP(&flagOutput, "output", "o", "table", "Output format: table, json")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -41,6 +43,17 @@ func init() {
 func newClient() *client.Client {
 	apiKey := config.GetAPIKey(flagAPIKey)
 	apiURL := config.GetAPIURL(flagAPIURL)
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
+		os.Exit(1)
+	}
+	return client.New(apiURL, apiKey)
+}
+
+// newIncidentsClient builds a client pointed at the incidents/maintenances API domain.
+func newIncidentsClient() *client.Client {
+	apiKey := config.GetAPIKey(flagAPIKey)
+	apiURL := config.GetIncidentsAPIURL(flagIncidentsAPIURL)
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
 		os.Exit(1)

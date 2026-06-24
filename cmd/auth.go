@@ -32,6 +32,12 @@ var authLoginCmd = &cobra.Command{
 			cfg.APIURL = config.DefaultAPIURL
 		}
 
+		if cmd.Flags().Changed("incidents-api-url") {
+			cfg.IncidentsAPIURL = flagIncidentsAPIURL
+		} else if cfg.IncidentsAPIURL == "" {
+			cfg.IncidentsAPIURL = config.DefaultIncidentsAPIURL
+		}
+
 		fmt.Print("API Key: ")
 		keyInput, _ := reader.ReadString('\n')
 		keyInput = strings.TrimSpace(keyInput)
@@ -78,12 +84,14 @@ var authStatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		apiKey := config.GetAPIKey(flagAPIKey)
 		apiURL := config.GetAPIURL(flagAPIURL)
+		incidentsAPIURL := config.GetIncidentsAPIURL(flagIncidentsAPIURL)
 
 		if apiKey == "" {
 			if output.IsJSON() {
 				output.PrintJSON(map[string]interface{}{
-					"authenticated": false,
-					"apiUrl":        apiURL,
+					"authenticated":   false,
+					"apiUrl":          apiURL,
+					"incidentsApiUrl": incidentsAPIURL,
 				})
 				return
 			}
@@ -97,10 +105,11 @@ var authStatusCmd = &cobra.Command{
 		_, err := c.Get("/v1/api/applications/", nil)
 		if output.IsJSON() {
 			payload := map[string]interface{}{
-				"authenticated": true,
-				"apiUrl":        apiURL,
-				"apiKeyMasked":  masked,
-				"valid":         err == nil,
+				"authenticated":   true,
+				"apiUrl":          apiURL,
+				"incidentsApiUrl": incidentsAPIURL,
+				"apiKeyMasked":    masked,
+				"valid":           err == nil,
 			}
 			if err != nil {
 				payload["error"] = err.Error()
@@ -109,8 +118,9 @@ var authStatusCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("API URL: %s\n", apiURL)
-		fmt.Printf("API Key: %s\n", masked)
+		fmt.Printf("API URL:           %s\n", apiURL)
+		fmt.Printf("Incidents API URL: %s\n", incidentsAPIURL)
+		fmt.Printf("API Key:           %s\n", masked)
 		if err != nil {
 			fmt.Printf("Status:  Invalid (%v)\n", err)
 		} else {
