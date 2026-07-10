@@ -49,6 +49,38 @@ uptimyctl healthchecks trigger <hc-uuid> -o json
 uptimyctl analytics executions <hc-uuid> -o json   # defaults to last 24h
 ```
 
+## Communicating Incidents
+
+A typical agent flow when something breaks:
+
+```bash
+# 1. Open an incident and publish it on the status page immediately
+uptimyctl incidents create --title "Elevated API errors" --severity high \
+  --description "5xx rate above 10% on api.example.com" \
+  --status-page <status-page-uuid> -o json
+
+# 2. Post public updates as the investigation progresses.
+#    --status transitions the incident in the same call.
+#    Statuses: Created, Acknowledged, Investigating, Identified, Monitoring, Resolved
+uptimyctl incidents add-update <uuid> --message "Investigating elevated error rates." --status Investigating -o json
+uptimyctl incidents add-update <uuid> --message "Bad deploy identified, rolling back." --status Identified -o json
+
+# 3. Resolve with a closing note for status page followers
+uptimyctl incidents resolve <uuid> --message "Rollback complete, error rates back to normal." -o json
+
+# 4. Attach a post-mortem afterwards (appends to the description and
+#    posts it as a public update; use --no-public-update to skip the update)
+uptimyctl incidents post-mortem <uuid> -f post-mortem.md -o json
+```
+
+Notes:
+
+- `incidents update` and `maintenances update` are partial: only the flags you pass change.
+- `incidents publish|unpublish` add/remove status pages without touching other fields; `--status-page` on `update` replaces the whole set.
+- Public visibility is per status page (publish) and per update (`--public`, default true). Private updates (`--public=false`) are for internal notes.
+- Only manually created incidents can be resolved via the CLI; automatic (monitoring-created) incidents resolve themselves.
+- Maintenance lifecycle: `maintenances create` (Scheduled) -> `start` (In Progress) -> `resolve` (Completed) or `cancel` (Cancelled).
+
 Commands that take complex payloads (`healthchecks upsert|bulk`, `alert-rules create|update`, `status-pages create|update`, `status-pages groups create|update`) read a JSON spec with `-f <file>` or `-f -` for stdin; run them with `--help` to see the spec format.
 
 ## Notes

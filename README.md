@@ -141,11 +141,29 @@ uptimyctl incidents list --status Resolved --severity critical
 uptimyctl incidents get <uuid>
 uptimyctl incidents stats
 
-uptimyctl incidents create --title "API Down" --severity critical --public
-uptimyctl incidents update <uuid> --title "API Down" --status Investigating
-uptimyctl incidents resolve <uuid>
-uptimyctl incidents add-update <uuid> --message "Root cause found" --public
+# Create an incident and publish it to a status page in one call
+uptimyctl incidents create --title "API Down" --severity critical \
+  --status-page <status-page-uuid>
+
+# Partial update: only the flags you pass are changed
+uptimyctl incidents update <uuid> --status Investigating
+
+# Post a public update, optionally transitioning status in the same command
+uptimyctl incidents add-update <uuid> --message "Root cause found" --status Identified
+uptimyctl incidents updates <uuid>               # list the timeline
+
+# Publish/unpublish on status pages without touching other fields
+uptimyctl incidents publish <uuid> --status-page <status-page-uuid>
+uptimyctl incidents unpublish <uuid> --all
+
+# Resolve with a final public note
+uptimyctl incidents resolve <uuid> --message "Fix deployed, all systems normal."
+
+# Attach a post-mortem (appended to the description and posted as a public update)
+uptimyctl incidents post-mortem <uuid> -f post-mortem.md
 ```
+
+Incident statuses: `Created`, `Acknowledged`, `Investigating`, `Identified`, `Monitoring`, `Resolved`. An incident is visible on a status page once published to it; individual updates appear publicly only when posted with `--public=true` (the default).
 
 ### Maintenances
 
@@ -154,12 +172,16 @@ uptimyctl maintenances list
 uptimyctl maint list                             # alias
 
 uptimyctl maintenances create \
+  --title "Database migration" \
   --start-at "2026-04-10T02:00:00Z" \
   --finish-at "2026-04-10T04:00:00Z" \
-  --description "Database migration"
+  --description "Primary DB failover, expect brief write errors" \
+  --status-page <status-page-uuid>
 
-uptimyctl maintenances resolve <uuid>            # resolve now
-uptimyctl maintenances resolve <uuid> --resolved-at "2026-04-10T03:30:00Z"
+uptimyctl maintenances update <uuid> --finish-at "2026-04-10T05:00:00Z"
+uptimyctl maintenances start <uuid>              # -> In Progress
+uptimyctl maintenances resolve <uuid>            # -> Completed
+uptimyctl maintenances cancel <uuid>             # -> Cancelled
 uptimyctl maintenances delete <uuid>
 ```
 
