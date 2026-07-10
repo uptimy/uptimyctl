@@ -73,6 +73,9 @@ uptimyctl --api-key upt_abc123... applications list
 uptimyctl applications list
 uptimyctl apps list                              # alias
 uptimyctl applications get <uuid>
+uptimyctl applications create --name "api" --description "Public API"
+uptimyctl applications update <uuid> --name "api-v2"
+uptimyctl applications delete <uuid>             # deletes healthchecks and alert rules too
 ```
 
 ### Healthchecks
@@ -81,10 +84,53 @@ uptimyctl applications get <uuid>
 uptimyctl healthchecks list
 uptimyctl hc list                                # alias
 uptimyctl healthchecks get <uuid>
+uptimyctl healthchecks upsert --application <app-uuid> -f check.json   # create or update
+uptimyctl healthchecks bulk -f monitors.json     # create apps + checks in one call
 uptimyctl healthchecks trigger <uuid>            # trigger immediate check
 uptimyctl healthchecks pause <uuid>              # disable/pause healthcheck
 uptimyctl healthchecks resume <uuid>             # enable/resume healthcheck
 uptimyctl healthchecks delete <uuid>             # delete healthcheck
+```
+
+See `uptimyctl healthchecks upsert --help` and `uptimyctl healthchecks bulk --help` for the JSON spec formats.
+
+### Alert Rules
+
+```bash
+uptimyctl alert-rules list --application <app-uuid>
+uptimyctl ar list --application <app-uuid>       # alias
+uptimyctl alert-rules get <uuid> --application <app-uuid>
+uptimyctl alert-rules create --application <app-uuid> -f rule.json
+uptimyctl alert-rules update <uuid> --application <app-uuid> -f rule.json
+uptimyctl alert-rules delete <uuid> --application <app-uuid>
+```
+
+### Status Pages
+
+```bash
+uptimyctl status-pages list
+uptimyctl sp list                                # alias
+uptimyctl status-pages get <uuid>
+uptimyctl status-pages create -f page.json
+uptimyctl status-pages update <uuid> -f page.json
+uptimyctl status-pages delete <uuid>
+
+uptimyctl status-pages groups list <status-page-uuid>
+uptimyctl status-pages groups create <status-page-uuid> -f group.json
+uptimyctl status-pages groups update <status-page-uuid> <group-uuid> -f group.json
+uptimyctl status-pages groups delete <status-page-uuid> <group-uuid>
+```
+
+### Analytics
+
+```bash
+# Defaults to the last 24 hours; --from/--to take RFC3339 timestamps
+uptimyctl analytics executions <healthcheck-uuid>
+uptimyctl analytics minute-region <healthcheck-uuid> --scheduler <scheduler-uuid>
+uptimyctl analytics minute-breakdown <healthcheck-uuid>
+uptimyctl analytics hour-region <healthcheck-uuid> --from 2026-07-01T00:00:00Z --to 2026-07-08T00:00:00Z
+uptimyctl analytics daily-region <healthcheck-uuid>
+uptimyctl analytics monthly-region <healthcheck-uuid>
 ```
 
 ### Incidents

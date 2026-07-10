@@ -114,6 +114,85 @@ var healthchecksResumeCmd = &cobra.Command{
 	},
 }
 
+var healthchecksUpsertCmd = &cobra.Command{
+	Use:     "upsert",
+	Aliases: []string{"create"},
+	Short:   "Create or update the healthcheck for an application",
+	Long: `Create or update the healthcheck for an application from a JSON spec.
+
+The spec matches the API's healthcheck payload:
+  {
+    "intervalSeconds": 60,
+    "timeoutSeconds": 10,
+    "config": { "url": "https://example.com/health", "method": "GET" },
+    "active": true,
+    "healthcheckTypeId": 1,
+    "schedulers": [],
+    "tags": []
+  }
+
+Examples:
+  uptimyctl healthchecks upsert --application <app-uuid> -f check.json
+  echo '{...}' | uptimyctl healthchecks upsert --application <app-uuid> -f -`,
+	Run: func(cmd *cobra.Command, args []string) {
+		appUUID, _ := cmd.Flags().GetString("application")
+		file, _ := cmd.Flags().GetString("file")
+
+		body, err := readJSONInput(file)
+		if err != nil {
+			exitErr(err)
+		}
+
+		c := newClient()
+		raw, err := c.Put("/v1/api/applications/"+appUUID+"/healthchecks/", body)
+		if err != nil {
+			exitErr(err)
+		}
+		data, _ := client.ParseDataField(raw)
+		output.PrintRawJSON(data)
+	},
+}
+
+var healthchecksBulkCmd = &cobra.Command{
+	Use:   "bulk",
+	Short: "Create several healthchecks at once, each with its own application",
+	Long: `Bulk-create applications and their healthchecks from a JSON spec (all-or-nothing).
+
+The spec matches the API's bulk payload:
+  {
+    "items": [
+      {
+        "applicationName": "api",
+        "description": "Public API",
+        "healthcheck": { "intervalSeconds": 60, "timeoutSeconds": 10, "config": {...}, "active": true, "healthcheckTypeId": 1, "schedulers": [] }
+      }
+    ]
+  }
+
+Examples:
+  uptimyctl healthchecks bulk -f monitors.json
+  cat monitors.json | uptimyctl healthchecks bulk -f -`,
+	Run: func(cmd *cobra.Command, args []string) {
+		file, _ := cmd.Flags().GetString("file")
+
+		body, err := readJSONInput(file)
+		if err != nil {
+			exitErr(err)
+		}
+
+		c := newClient()
+		raw, err := c.Post("/v1/api/healthchecks/bulk", body)
+		if err != nil {
+			exitErr(err)
+		}
+		results, err := client.ParseResultsField(raw)
+		if err != nil {
+			exitErr(err)
+		}
+		output.PrintRawJSON(results)
+	},
+}
+
 var healthchecksDeleteCmd = &cobra.Command{
 	Use:   "delete <uuid>",
 	Short: "Delete a healthcheck",
@@ -129,8 +208,18 @@ var healthchecksDeleteCmd = &cobra.Command{
 }
 
 func init() {
+	healthchecksUpsertCmd.Flags().String("application", "", "Application UUID (required)")
+	healthchecksUpsertCmd.Flags().StringP("file", "f", "", "JSON spec file, or - for stdin (required)")
+	_ = healthchecksUpsertCmd.MarkFlagRequired("application")
+	_ = healthchecksUpsertCmd.MarkFlagRequired("file")
+
+	healthchecksBulkCmd.Flags().StringP("file", "f", "", "JSON spec file, or - for stdin (required)")
+	_ = healthchecksBulkCmd.MarkFlagRequired("file")
+
 	healthchecksCmd.AddCommand(healthchecksListCmd)
 	healthchecksCmd.AddCommand(healthchecksGetCmd)
+	healthchecksCmd.AddCommand(healthchecksUpsertCmd)
+	healthchecksCmd.AddCommand(healthchecksBulkCmd)
 	healthchecksCmd.AddCommand(healthchecksTriggerCmd)
 	healthchecksCmd.AddCommand(healthchecksPauseCmd)
 	healthchecksCmd.AddCommand(healthchecksResumeCmd)
