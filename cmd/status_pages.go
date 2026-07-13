@@ -29,13 +29,13 @@ var statusPagesListCmd = &cobra.Command{
 			return
 		}
 
-		data, err := client.ParseDataField(raw)
+		results, err := client.ParseResultsField(raw)
 		if err != nil {
 			exitErr(err)
 		}
 
 		var pages []map[string]interface{}
-		if err := json.Unmarshal(data, &pages); err != nil {
+		if err := json.Unmarshal(results, &pages); err != nil {
 			exitErr(err)
 		}
 

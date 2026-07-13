@@ -29,20 +29,13 @@ var schedulersListCmd = &cobra.Command{
 			return
 		}
 
-		data, err := client.ParseDataField(raw)
+		results, err := client.ParseResultsField(raw)
 		if err != nil {
 			exitErr(err)
 		}
 
-		// The schedulers response has { workspace, schedulers } shape
-		var wrapper map[string]interface{}
-		if err := json.Unmarshal(data, &wrapper); err != nil {
-			exitErr(err)
-		}
-
-		schedulersRaw, _ := json.Marshal(wrapper["schedulers"])
 		var schedulers []map[string]interface{}
-		if err := json.Unmarshal(schedulersRaw, &schedulers); err != nil {
+		if err := json.Unmarshal(results, &schedulers); err != nil {
 			exitErr(err)
 		}
 
