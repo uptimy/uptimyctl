@@ -11,6 +11,7 @@ import (
 const (
 	DefaultAPIURL          = "https://api.upti.my"
 	DefaultIncidentsAPIURL = "https://workflows.upti.my"
+	DefaultAppURL          = "https://app.upti.my"
 	ConfigFileName         = ".uptimyctl"
 )
 
@@ -57,7 +58,19 @@ func Save(cfg *Config) error {
 	viper.Set("api_url", cfg.APIURL)
 	viper.Set("incidents_api_url", cfg.IncidentsAPIURL)
 	viper.Set("api_key", cfg.APIKey)
-	return viper.WriteConfigAs(configPath())
+	if err := viper.WriteConfigAs(configPath()); err != nil {
+		return err
+	}
+	// viper creates the file 0644; it holds the API key, so keep it owner-only.
+	return os.Chmod(configPath(), 0600)
+}
+
+// GetAppURL returns the web app base URL used for browser login.
+func GetAppURL() string {
+	if envURL := os.Getenv("UPTIMYCTL_APP_URL"); envURL != "" {
+		return envURL
+	}
+	return DefaultAppURL
 }
 
 func GetAPIKey(flagOverride string) string {

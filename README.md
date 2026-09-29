@@ -52,11 +52,17 @@ curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/uni
 
 ## Authentication
 
-Create an API key at **Settings > API Keys** in the upti.my dashboard, then:
-
 ```bash
-# Interactive login (saves to ~/.config/uptimyctl/config.yaml)
+# Opens your browser: pick a workspace, approve, and the key is saved to
+# ~/.config/uptimyctl/config.yaml. Keys are named "uptimyctl (<hostname>)"
+# and expire after 90 days.
 uptimyctl auth login
+
+# Over SSH or on a headless machine: open the printed URL anywhere, paste the key
+uptimyctl auth login --no-browser
+
+# Or pipe an existing key (create one at Settings > API Keys)
+echo "$UPTIMY_KEY" | uptimyctl auth login
 
 # Or use environment variable
 export UPTIMYCTL_API_KEY=upt_abc123...
