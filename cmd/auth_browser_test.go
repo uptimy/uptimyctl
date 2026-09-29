@@ -47,12 +47,17 @@ func TestBrowserLoginCallback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return resp.StatusCode
 	}
 
-	if resp, err := http.Get(callback); err != nil || resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("GET callback: want 404, got %v %v", resp, err)
+	resp, err := http.Get(callback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("GET callback: want 404, got %d", resp.StatusCode)
 	}
 	if code := post(callback, "localhost:"+port, url.Values{"key": {"upt_x"}, "state": {state}}); code != http.StatusNotFound {
 		t.Fatalf("foreign Host header: want 404, got %d", code)

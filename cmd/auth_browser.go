@@ -60,7 +60,7 @@ func browserLogin(appURL string) (string, error) {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
-		fmt.Fprint(w, callbackPage)
+		_, _ = fmt.Fprint(w, callbackPage)
 		select {
 		case keys <- key:
 		default:
