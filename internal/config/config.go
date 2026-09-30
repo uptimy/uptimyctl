@@ -11,6 +11,7 @@ import (
 const (
 	DefaultAPIURL          = "https://api.upti.my"
 	DefaultIncidentsAPIURL = "https://workflows.upti.my"
+	DefaultHeartbeatsURL   = "https://heartbeats.upti.my"
 	DefaultAppURL          = "https://app.upti.my"
 	ConfigFileName         = ".uptimyctl"
 )
@@ -18,6 +19,7 @@ const (
 type Config struct {
 	APIURL          string `mapstructure:"api_url"`
 	IncidentsAPIURL string `mapstructure:"incidents_api_url"`
+	HeartbeatsURL   string `mapstructure:"heartbeats_api_url"`
 	APIKey          string `mapstructure:"api_key"`
 }
 
@@ -40,6 +42,7 @@ func Load() *Config {
 	viper.AddConfigPath(configDir())
 	viper.SetDefault("api_url", DefaultAPIURL)
 	viper.SetDefault("incidents_api_url", DefaultIncidentsAPIURL)
+	viper.SetDefault("heartbeats_api_url", DefaultHeartbeatsURL)
 	viper.SetDefault("api_key", "")
 	viper.SetEnvPrefix("UPTIMYCTL")
 	viper.AutomaticEnv()
@@ -57,6 +60,7 @@ func Save(cfg *Config) error {
 	}
 	viper.Set("api_url", cfg.APIURL)
 	viper.Set("incidents_api_url", cfg.IncidentsAPIURL)
+	viper.Set("heartbeats_api_url", cfg.HeartbeatsURL)
 	viper.Set("api_key", cfg.APIKey)
 	if err := viper.WriteConfigAs(configPath()); err != nil {
 		return err
@@ -109,4 +113,20 @@ func GetIncidentsAPIURL(flagOverride string) string {
 		return cfg.IncidentsAPIURL
 	}
 	return DefaultIncidentsAPIURL
+}
+
+// GetHeartbeatsURL returns the heartbeat service base URL: both its API
+// (/v1/api/heartbeat-monitors) and the check-in URLs (/v1/monitors/<id>).
+func GetHeartbeatsURL(flagOverride string) string {
+	if flagOverride != "" {
+		return flagOverride
+	}
+	if envURL := os.Getenv("UPTIMYCTL_HEARTBEATS_API_URL"); envURL != "" {
+		return envURL
+	}
+	cfg := Load()
+	if cfg.HeartbeatsURL != "" {
+		return cfg.HeartbeatsURL
+	}
+	return DefaultHeartbeatsURL
 }

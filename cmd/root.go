@@ -14,6 +14,7 @@ var (
 	flagAPIKey          string
 	flagAPIURL          string
 	flagIncidentsAPIURL string
+	flagHeartbeatsURL   string
 	flagOutput          string
 )
 
@@ -33,6 +34,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&flagAPIKey, "api-key", "", "API key (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVar(&flagAPIURL, "api-url", "", "API base URL (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVar(&flagIncidentsAPIURL, "incidents-api-url", "", "API base URL for incidents and maintenances (overrides config file and env)")
+	rootCmd.PersistentFlags().StringVar(&flagHeartbeatsURL, "heartbeats-api-url", "", "API base URL for heartbeats (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVarP(&flagOutput, "output", "o", "table", "Output format: table, json")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -59,6 +61,16 @@ func newIncidentsClient() *client.Client {
 		os.Exit(1)
 	}
 	return client.New(apiURL, apiKey)
+}
+
+// newHeartbeatsClient builds a client pointed at the heartbeat service.
+func newHeartbeatsClient() *client.Client {
+	apiKey := config.GetAPIKey(flagAPIKey)
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
+		os.Exit(1)
+	}
+	return client.New(config.GetHeartbeatsURL(flagHeartbeatsURL), apiKey)
 }
 
 func exitErr(err error) {

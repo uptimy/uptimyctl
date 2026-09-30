@@ -16,6 +16,7 @@ This repository is a Go CLI for managing upti.my workspaces.
 - Default API URL: `https://api.upti.my`
 - Optional override for non-production or local API usage: `--api-url` or `UPTIMYCTL_API_URL`
 - `incidents` and `maintenances` use a separate domain (default `https://workflows.upti.my`), overridable via `--incidents-api-url` or `UPTIMYCTL_INCIDENTS_API_URL`
+- `heartbeats` use a separate domain (default `https://heartbeats.upti.my`), overridable via `--heartbeats-api-url` or `UPTIMYCTL_HEARTBEATS_API_URL`
 
 ## Machine-Friendly Usage
 
@@ -48,6 +49,26 @@ uptimyctl status-pages groups create <status-page-uuid> -f group.json -o json
 uptimyctl healthchecks trigger <hc-uuid> -o json
 uptimyctl analytics executions <hc-uuid> -o json   # defaults to last 24h
 ```
+
+## Guarding Scheduled Jobs with Heartbeats
+
+```bash
+# 1. Create a heartbeat per job; --client-ref makes reruns idempotent
+uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m \
+  --client-ref backup-prod -o json          # .credential.publicId -> ping URL (also: heartbeats get -> pingUrl)
+
+# 2. The job calls its ping URL at the end of every successful run (no API key)
+curl -fsS https://heartbeats.upti.my/v1/monitors/<publicId>
+
+# 3. Verify, and pause during planned downtime
+uptimyctl heartbeats ping <uuid> -o json
+uptimyctl heartbeats pause <uuid> -o json && uptimyctl heartbeats resume <uuid> -o json
+```
+
+Notes:
+
+- `heartbeats update` is partial: it keeps steps and every field you don't pass.
+- Uptimy Agent keys (scope `agent`) only see heartbeats they created; use a regular key for the CLI.
 
 ## Communicating Incidents
 

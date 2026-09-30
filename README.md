@@ -191,6 +191,29 @@ uptimyctl maintenances cancel <uuid>             # -> Cancelled
 uptimyctl maintenances delete <uuid>
 ```
 
+### Heartbeats
+
+Dead man's switches for cron jobs and workers: a heartbeat alerts when check-ins stop.
+
+```bash
+uptimyctl heartbeats list
+uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m   # prints the ping URL
+uptimyctl heartbeats create -f heartbeat.json            # full spec, e.g. multi-step heartbeats
+uptimyctl heartbeats create --name "Backup" --client-ref backup-prod             # idempotent: reruns reuse it
+uptimyctl heartbeats get <uuid>                          # includes pingUrl
+uptimyctl heartbeats update <uuid> --interval 12h        # only the flags you pass change
+uptimyctl heartbeats pause <uuid>
+uptimyctl heartbeats resume <uuid>
+uptimyctl heartbeats ping <uuid>                         # send a test check-in
+uptimyctl heartbeats delete <uuid>
+```
+
+Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats default to `--interval 1h --grace 5m`, like the web app. In the monitored job itself, call the ping URL directly (no API key needed):
+
+```bash
+0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://heartbeats.upti.my/v1/monitors/<id>
+```
+
 ### Schedulers (Regions)
 
 ```bash
@@ -221,6 +244,7 @@ uptimyctl version
 | `--api-key` | API key (overrides config and env) |
 | `--api-url` | API base URL (overrides config and env) |
 | `--incidents-api-url` | API base URL for incidents and maintenances (overrides config and env) |
+| `--heartbeats-api-url` | API base URL for heartbeats (overrides config and env) |
 | `-o, --output` | Output format: `table` (default), `json` |
 
 ## Automation
@@ -249,10 +273,11 @@ Config file location: `~/.config/uptimyctl/config.yaml`
 ```yaml
 api_url: https://api.upti.my
 incidents_api_url: https://workflows.upti.my
+heartbeats_api_url: https://heartbeats.upti.my
 api_key: upt_abc123...
 ```
 
-> `incidents` and `maintenances` are served from a separate domain (`incidents_api_url`); all other resources use `api_url`.
+> `incidents` and `maintenances` are served from a separate domain (`incidents_api_url`), and `heartbeats` from another (`heartbeats_api_url`); all other resources use `api_url`.
 
 Environment variables override the config file:
 
@@ -261,6 +286,7 @@ Environment variables override the config file:
 | `UPTIMYCTL_API_KEY` | API key |
 | `UPTIMYCTL_API_URL` | API base URL |
 | `UPTIMYCTL_INCIDENTS_API_URL` | API base URL for incidents and maintenances |
+| `UPTIMYCTL_HEARTBEATS_API_URL` | API base URL for heartbeats |
 
 ## Development
 
