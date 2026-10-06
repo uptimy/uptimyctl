@@ -21,11 +21,11 @@ var authLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authorize uptimyctl in your browser and save the API key",
 	Long: `Opens the Uptimy app in your browser, where you pick a workspace and approve
-access. The app creates an API key for this machine (valid for 90 days) and
-sends it straight back to uptimyctl.
+access. The browser returns a one-time code to uptimyctl, which exchanges it
+(OAuth with PKCE) for an API key for this machine, valid for 90 days.
 
 Over SSH or on a headless machine, use --no-browser: open the printed URL on any
-device and paste the key it shows. In scripts, pass --api-key or pipe the key
+device and paste the code it shows. In scripts, pass --api-key or pipe the key
 on stdin.`,
 	Example: `  uptimyctl auth login
   uptimyctl auth login --no-browser
@@ -54,7 +54,7 @@ on stdin.`,
 			cfg.HeartbeatsURL = config.DefaultHeartbeatsURL
 		}
 
-		keyInput, err := readLoginKey(cmd, reader)
+		keyInput, err := readLoginKey(cmd, reader, cfg.APIURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -148,8 +148,8 @@ var authStatusCmd = &cobra.Command{
 }
 
 // readLoginKey picks where the key comes from: --api-key, piped stdin, a pasted
-// key (--no-browser), or the browser flow.
-func readLoginKey(cmd *cobra.Command, reader *bufio.Reader) (string, error) {
+// code or key (--no-browser), or the browser flow.
+func readLoginKey(cmd *cobra.Command, reader *bufio.Reader, apiURL string) (string, error) {
 	if flagAPIKey != "" {
 		return flagAPIKey, nil
 	}
@@ -159,12 +159,12 @@ func readLoginKey(cmd *cobra.Command, reader *bufio.Reader) (string, error) {
 	}
 	appURL := config.GetAppURL()
 	if noBrowser, _ := cmd.Flags().GetBool("no-browser"); noBrowser {
-		fmt.Fprintf(os.Stderr, "Open this URL in a browser, approve access, then paste the key here:\n\n  %s\n\n", manualLoginURL(appURL))
-		fmt.Fprint(os.Stderr, "API Key: ")
-		line, _ := reader.ReadString('\n')
-		return strings.TrimSpace(line), nil
+		return manualLogin(appURL, apiURL, os.Stderr, func() string {
+			line, _ := reader.ReadString('\n')
+			return line
+		})
 	}
-	return browserLogin(appURL)
+	return browserLogin(appURL, apiURL)
 }
 
 func stdinIsTerminal() bool {
@@ -173,7 +173,7 @@ func stdinIsTerminal() bool {
 }
 
 func init() {
-	authLoginCmd.Flags().Bool("no-browser", false, "Print the authorization URL and paste the key instead of opening a browser")
+	authLoginCmd.Flags().Bool("no-browser", false, "Print the authorization URL and paste the code it shows instead of opening a browser")
 	authCmd.AddCommand(authLoginCmd)
 	authCmd.AddCommand(authStatusCmd)
 	rootCmd.AddCommand(authCmd)

@@ -53,12 +53,13 @@ curl -sSfL https://raw.githubusercontent.com/uptimy/uptimyctl/master/scripts/uni
 ## Authentication
 
 ```bash
-# Opens your browser: pick a workspace, approve, and the key is saved to
+# Opens your browser: pick a workspace and approve. uptimyctl exchanges the
+# one-time code it gets back (OAuth with PKCE) for an API key and saves it to
 # ~/.config/uptimyctl/config.yaml. Keys are named "uptimyctl (<hostname>)"
 # and expire after 90 days.
 uptimyctl auth login
 
-# Over SSH or on a headless machine: open the printed URL anywhere, paste the key
+# Over SSH or on a headless machine: open the printed URL anywhere, paste the code
 uptimyctl auth login --no-browser
 
 # Or pipe an existing key (create one at Settings > API Keys)
