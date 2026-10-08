@@ -104,6 +104,17 @@ Notes:
 
 Commands that take complex payloads (`healthchecks upsert|bulk`, `alert-rules create|update`, `status-pages create|update`, `status-pages groups create|update`) read a JSON spec with `-f <file>` or `-f -` for stdin; run them with `--help` to see the spec format.
 
+## Third-Party Dependencies
+
+```bash
+uptimyctl dependencies list -o json                 # followed services and their status: "is it us or GitHub?"
+uptimyctl dependencies get github -o json           # probes with status and uptime
+uptimyctl dependencies follow stripe -o json        # outages then open incidents in this workspace
+```
+
+- `follow --probe <key>` replaces the followed set for that service; without `--probe` every probe is followed.
+- The plan's public service limit applies when following a new service.
+
 ## Notes
 
 - Do not commit real API keys or workspace exports containing secrets.

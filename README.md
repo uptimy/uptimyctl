@@ -215,6 +215,19 @@ Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats defau
 0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://heartbeats.upti.my/v1/monitors/<id>
 ```
 
+### Dependencies
+
+Follow the third-party services Uptimy measures (GitHub, Cloudflare, Stripe, ...). When a followed service goes down, your workspace gets its own incident and your alert workflows run.
+
+```bash
+uptimyctl dependencies catalog                   # every service you can follow, with status and 30-day uptime
+uptimyctl dependencies list                      # what this workspace follows
+uptimyctl dependencies get github                # probes (website, API, ...), their status, which ones you follow
+uptimyctl dependencies follow github             # follow every probe
+uptimyctl dependencies follow github --probe rest-api --probe git-operations   # exactly these probes
+uptimyctl dependencies unfollow github           # also resolves its open incident here
+```
+
 ### Schedulers (Regions)
 
 ```bash
