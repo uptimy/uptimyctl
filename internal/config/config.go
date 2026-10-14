@@ -12,6 +12,7 @@ const (
 	DefaultAPIURL          = "https://api.upti.my"
 	DefaultIncidentsAPIURL = "https://workflows.upti.my"
 	DefaultHeartbeatsURL   = "https://heartbeats.upti.my"
+	DefaultReportsURL      = "https://reports.upti.my"
 	DefaultAppURL          = "https://app.upti.my"
 	ConfigFileName         = ".uptimyctl"
 )
@@ -20,6 +21,7 @@ type Config struct {
 	APIURL          string `mapstructure:"api_url"`
 	IncidentsAPIURL string `mapstructure:"incidents_api_url"`
 	HeartbeatsURL   string `mapstructure:"heartbeats_api_url"`
+	ReportsURL      string `mapstructure:"reports_api_url"`
 	APIKey          string `mapstructure:"api_key"`
 }
 
@@ -43,6 +45,7 @@ func Load() *Config {
 	viper.SetDefault("api_url", DefaultAPIURL)
 	viper.SetDefault("incidents_api_url", DefaultIncidentsAPIURL)
 	viper.SetDefault("heartbeats_api_url", DefaultHeartbeatsURL)
+	viper.SetDefault("reports_api_url", DefaultReportsURL)
 	viper.SetDefault("api_key", "")
 	viper.SetEnvPrefix("UPTIMYCTL")
 	viper.AutomaticEnv()
@@ -61,6 +64,7 @@ func Save(cfg *Config) error {
 	viper.Set("api_url", cfg.APIURL)
 	viper.Set("incidents_api_url", cfg.IncidentsAPIURL)
 	viper.Set("heartbeats_api_url", cfg.HeartbeatsURL)
+	viper.Set("reports_api_url", cfg.ReportsURL)
 	viper.Set("api_key", cfg.APIKey)
 	if err := viper.WriteConfigAs(configPath()); err != nil {
 		return err
@@ -129,4 +133,19 @@ func GetHeartbeatsURL(flagOverride string) string {
 		return cfg.HeartbeatsURL
 	}
 	return DefaultHeartbeatsURL
+}
+
+// GetReportsURL returns the reports service base URL (/v1/api/reports).
+func GetReportsURL(flagOverride string) string {
+	if flagOverride != "" {
+		return flagOverride
+	}
+	if envURL := os.Getenv("UPTIMYCTL_REPORTS_API_URL"); envURL != "" {
+		return envURL
+	}
+	cfg := Load()
+	if cfg.ReportsURL != "" {
+		return cfg.ReportsURL
+	}
+	return DefaultReportsURL
 }

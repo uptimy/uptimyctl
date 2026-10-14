@@ -54,6 +54,12 @@ on stdin.`,
 			cfg.HeartbeatsURL = config.DefaultHeartbeatsURL
 		}
 
+		if cmd.Flags().Changed("reports-api-url") {
+			cfg.ReportsURL = flagReportsURL
+		} else if cfg.ReportsURL == "" {
+			cfg.ReportsURL = config.DefaultReportsURL
+		}
+
 		keyInput, err := readLoginKey(cmd, reader, cfg.APIURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)

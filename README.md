@@ -228,6 +228,22 @@ uptimyctl dependencies follow github --probe rest-api --probe git-operations   #
 uptimyctl dependencies unfollow github           # also resolves its open incident here
 ```
 
+### Reports
+
+Uptime reports: availability against the SLA target, downtime, incidents and planned maintenance for any period. Months, quarters, ranges and the current week need a paid plan; the sent weekly report (`--week`) is free.
+
+```bash
+uptimyctl reports list                                   # the workspace's reports
+uptimyctl reports get                                    # last 30 days, every monitor
+uptimyctl reports get --last 7d --report Acme            # a client's report by name
+uptimyctl reports get --week                             # the latest sent weekly report
+uptimyctl reports get --month 2026-09
+uptimyctl reports get --quarter 2026-Q3 -o json
+uptimyctl reports get --from 2026-09-01 --to 2026-09-15 --csv days > days.csv
+```
+
+`--csv` prints `monitors`, `days`, `incidents` or `maintenance` rows.
+
 ### Schedulers (Regions)
 
 ```bash
@@ -259,6 +275,7 @@ uptimyctl version
 | `--api-url` | API base URL (overrides config and env) |
 | `--incidents-api-url` | API base URL for incidents and maintenances (overrides config and env) |
 | `--heartbeats-api-url` | API base URL for heartbeats (overrides config and env) |
+| `--reports-api-url` | API base URL for uptime reports (overrides config and env) |
 | `-o, --output` | Output format: `table` (default), `json` |
 
 ## Automation
