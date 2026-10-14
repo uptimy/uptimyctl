@@ -24,7 +24,8 @@ incidents and planned maintenance for any period, from the reports service.
 
 A report covers every monitor (the workspace's default) or chosen ones (e.g.
 one client's); 'reports list' shows them. Months, quarters, ranges and the
-current week need a paid plan; the sent weekly report (--week) is free.
+current week need the Growth plan or above; the sent weekly report (--week)
+is on every plan.
 
 Examples:
   uptimyctl reports list

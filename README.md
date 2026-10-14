@@ -230,7 +230,7 @@ uptimyctl dependencies unfollow github           # also resolves its open incide
 
 ### Reports
 
-Uptime reports: availability against the SLA target, downtime, incidents and planned maintenance for any period. Months, quarters, ranges and the current week need a paid plan; the sent weekly report (`--week`) is free.
+Uptime reports: availability against the SLA target, downtime, incidents and planned maintenance for any period. Months, quarters, ranges and the current week need the Growth plan or above; the sent weekly report (`--week`) is on every plan.
 
 ```bash
 uptimyctl reports list                                   # the workspace's reports
