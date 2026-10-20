@@ -199,6 +199,7 @@ Dead man's switches for cron jobs and workers: a heartbeat alerts when check-ins
 ```bash
 uptimyctl heartbeats list
 uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m   # prints the ping URL
+uptimyctl heartbeats create --name "Report" --cron "0 9 * * 1-5" --timezone Europe/Berlin   # at set times
 uptimyctl heartbeats create -f heartbeat.json            # full spec, e.g. multi-step heartbeats
 uptimyctl heartbeats create --name "Backup" --client-ref backup-prod             # idempotent: reruns reuse it
 uptimyctl heartbeats get <uuid>                          # includes pingUrl
@@ -209,7 +210,7 @@ uptimyctl heartbeats ping <uuid>                         # send a test check-in
 uptimyctl heartbeats delete <uuid>
 ```
 
-Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats default to `--interval 1h --grace 5m`, like the web app. In the monitored job itself, call the ping URL directly (no API key needed):
+Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats default to `--interval 1h --grace 5m`, like the web app. `--cron` takes a five-field expression or `@daily`-style shortcut in `--timezone` (default UTC) instead of an interval; `--interval` on a cron heartbeat switches it back. In the monitored job itself, call the ping URL directly (no API key needed):
 
 ```bash
 0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://heartbeats.upti.my/v1/monitors/<id>

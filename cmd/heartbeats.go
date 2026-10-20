@@ -23,7 +23,8 @@ var heartbeatsCmd = &cobra.Command{
 anything else that should check in on a schedule.
 
 A heartbeat expects a check-in (an HTTP request to its ping URL) at least
-every --interval, plus --grace. When check-ins stop, it goes down and alerts.
+every --interval, or at the times of a --cron expression in --timezone, plus
+--grace. When check-ins stop, it goes down and alerts.
 
 Heartbeats use a separate domain (default https://heartbeats.upti.my),
 overridable with --heartbeats-api-url or UPTIMYCTL_HEARTBEATS_API_URL.`,
@@ -55,6 +56,19 @@ func parseSeconds(flag, value string, allowZero bool) (int, error) {
 		return 0, fmt.Errorf("invalid --%s %q: must be greater than 0", flag, value)
 	}
 	return seconds, nil
+}
+
+// heartbeatSchedule is a heartbeat's schedule for tables: "1h", or
+// "0 3 * * * (Europe/Berlin)" for a cron one.
+func heartbeatSchedule(hb map[string]interface{}) string {
+	if cron := str(hb["cron"]); cron != "" {
+		tz := str(hb["timezone"])
+		if tz == "" {
+			tz = "UTC"
+		}
+		return fmt.Sprintf("%s (%s)", cron, tz)
+	}
+	return formatSeconds(hb["intervalSeconds"])
 }
 
 // formatSeconds renders an interval compactly: 43200 -> "12h", 5400 -> "1h30m", 90 -> "1m30s".
@@ -116,7 +130,7 @@ func getHeartbeat(c *client.Client, uuid string) map[string]interface{} {
 // field is carried over and callers change only what they mean to.
 func heartbeatRequest(hb map[string]interface{}) map[string]interface{} {
 	body := map[string]interface{}{"paused": hb["pausedAt"] != nil}
-	for _, k := range []string{"name", "description", "intervalSeconds", "graceSeconds", "failureThreshold", "recoveryThreshold", "enforceOrder", "steps"} {
+	for _, k := range []string{"name", "description", "intervalSeconds", "cron", "timezone", "graceSeconds", "failureThreshold", "recoveryThreshold", "enforceOrder", "steps"} {
 		if v, ok := hb[k]; ok {
 			body[k] = v
 		}
@@ -176,12 +190,12 @@ var heartbeatsListCmd = &cobra.Command{
 				str(hb["uuid"]),
 				output.Truncate(str(hb["name"]), 40),
 				heartbeatStatus(hb),
-				formatSeconds(hb["intervalSeconds"]),
+				heartbeatSchedule(hb),
 				formatSeconds(hb["graceSeconds"]),
 				output.ValueOrDash(str(snap["lastPingAt"])),
 			})
 		}
-		output.PrintTable([]string{"UUID", "Name", "Status", "Every", "Grace", "Last Check-in"}, rows)
+		output.PrintTable([]string{"UUID", "Name", "Status", "Schedule", "Grace", "Last Check-in"}, rows)
 	},
 }
 
@@ -212,6 +226,7 @@ and infrastructure-as-code.
 
 Examples:
   uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m
+  uptimyctl heartbeats create --name "Report" --cron "0 9 * * 1-5" --timezone Europe/Berlin
   uptimyctl heartbeats create --name "Queue worker" --interval 1m --grace 30s -o json
   uptimyctl heartbeats create -f heartbeat.json -o json
 
@@ -254,8 +269,27 @@ Then call the ping URL at the end of every run:
 
 // applyHeartbeatFlags sets body fields from the flags the user passed. With
 // withDefaults, unset interval/grace fall back to the web app's defaults
-// unless the body (e.g. a -f spec) already has them.
+// unless the body (e.g. a -f spec) already has them; a cron heartbeat gets no
+// default interval.
 func applyHeartbeatFlags(cmd *cobra.Command, body map[string]interface{}, withDefaults bool) error {
+	switch {
+	case cmd.Flags().Changed("cron") && cmd.Flags().Changed("interval"):
+		return fmt.Errorf("use --interval or --cron, not both")
+	case cmd.Flags().Changed("cron"):
+		cron, _ := cmd.Flags().GetString("cron")
+		if strings.TrimSpace(cron) == "" {
+			return fmt.Errorf("--cron needs an expression, e.g. \"0 3 * * *\"; use --interval to switch back")
+		}
+		body["cron"], body["intervalSeconds"] = cron, 0
+	case cmd.Flags().Changed("interval"):
+		// Switches a cron heartbeat back to an interval.
+		body["cron"] = ""
+	}
+	if cmd.Flags().Changed("timezone") {
+		body["timezone"], _ = cmd.Flags().GetString("timezone")
+	}
+	onCron := str(body["cron"]) != ""
+
 	for _, f := range []struct {
 		flag, field string
 		def         time.Duration
@@ -271,7 +305,7 @@ func applyHeartbeatFlags(cmd *cobra.Command, body map[string]interface{}, withDe
 				return err
 			}
 			body[f.field] = seconds
-		} else if _, set := body[f.field]; withDefaults && !set {
+		} else if _, set := body[f.field]; withDefaults && !set && !(onCron && f.flag == "interval") {
 			body[f.field] = int(f.def / time.Second)
 		}
 	}
@@ -384,6 +418,8 @@ func init() {
 		c.Flags().String("name", "", "Heartbeat name")
 		c.Flags().String("description", "", "Description")
 		c.Flags().String("interval", "", "Expected check-in interval, e.g. 5m, 1h, 24h (default 1h on create)")
+		c.Flags().String("cron", "", `Expected check-in times instead of an interval: a cron expression, e.g. "0 3 * * *" or @daily`)
+		c.Flags().String("timezone", "", "Time zone of --cron, e.g. Europe/Berlin (default UTC)")
 		c.Flags().String("grace", "", "Extra time allowed after the interval, e.g. 30s, 5m (default 5m on create)")
 		c.Flags().Int("failure-threshold", 0, "Missed check-ins before it goes down (default 1)")
 		c.Flags().Int("recovery-threshold", 0, "Check-ins needed to recover (default 1)")

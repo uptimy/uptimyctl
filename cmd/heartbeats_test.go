@@ -40,6 +40,10 @@ func TestHeartbeatRequestKeepsEverything(t *testing.T) {
 			t.Errorf("update body lost %q; updates replace the whole heartbeat", k)
 		}
 	}
+	cron := heartbeatRequest(map[string]interface{}{"name": "Report", "intervalSeconds": 0.0, "cron": "0 9 * * 1-5", "timezone": "Europe/Berlin"})
+	if cron["cron"] != "0 9 * * 1-5" || cron["timezone"] != "Europe/Berlin" {
+		t.Errorf("a cron heartbeat's schedule must be carried over: %v", cron)
+	}
 	for _, k := range []string{"uuid", "statusSnapshot", "pausedAt"} {
 		if _, ok := body[k]; ok {
 			t.Errorf("update body should not send read-only %q", k)
@@ -53,6 +57,8 @@ func TestApplyHeartbeatFlags(t *testing.T) {
 		c.Flags().String("name", "", "")
 		c.Flags().String("description", "", "")
 		c.Flags().String("interval", "", "")
+		c.Flags().String("cron", "", "")
+		c.Flags().String("timezone", "", "")
 		c.Flags().String("grace", "", "")
 		c.Flags().Int("failure-threshold", 0, "")
 		c.Flags().Int("recovery-threshold", 0, "")
@@ -89,6 +95,46 @@ func TestApplyHeartbeatFlags(t *testing.T) {
 
 	if err := applyHeartbeatFlags(newCmd("--failure-threshold", "0"), map[string]interface{}{}, false); err == nil {
 		t.Fatal("threshold 0 accepted")
+	}
+
+	// Cron: no default interval, and the zone goes along.
+	body = map[string]interface{}{"name": "x"}
+	if err := applyHeartbeatFlags(newCmd("--cron", "0 9 * * 1-5", "--timezone", "Europe/Berlin"), body, true); err != nil {
+		t.Fatal(err)
+	}
+	if body["cron"] != "0 9 * * 1-5" || body["timezone"] != "Europe/Berlin" || body["intervalSeconds"] != 0 || body["graceSeconds"] != 300 {
+		t.Fatalf("cron create: %v", body)
+	}
+
+	// A -f spec with a cron schedule gets no default interval either.
+	body = map[string]interface{}{"name": "x", "cron": "@daily"}
+	_ = applyHeartbeatFlags(newCmd(), body, true)
+	if _, set := body["intervalSeconds"]; set {
+		t.Fatalf("cron spec got an interval: %v", body)
+	}
+
+	// --interval on a cron heartbeat switches it back.
+	body = map[string]interface{}{"name": "x", "intervalSeconds": 0.0, "cron": "@daily", "timezone": "UTC"}
+	if err := applyHeartbeatFlags(newCmd("--interval", "1h"), body, false); err != nil {
+		t.Fatal(err)
+	}
+	if body["cron"] != "" || body["intervalSeconds"] != 3600 {
+		t.Fatalf("switch to interval: %v", body)
+	}
+
+	for _, args := range [][]string{{"--cron", "@daily", "--interval", "1h"}, {"--cron", " "}} {
+		if err := applyHeartbeatFlags(newCmd(args...), map[string]interface{}{}, true); err == nil {
+			t.Fatalf("%v accepted", args)
+		}
+	}
+}
+
+func TestHeartbeatSchedule(t *testing.T) {
+	if got := heartbeatSchedule(map[string]interface{}{"intervalSeconds": 3600.0}); got != "1h" {
+		t.Errorf("interval: %q", got)
+	}
+	if got := heartbeatSchedule(map[string]interface{}{"intervalSeconds": 0.0, "cron": "0 3 * * *", "timezone": "Europe/Berlin"}); got != "0 3 * * * (Europe/Berlin)" {
+		t.Errorf("cron: %q", got)
 	}
 }
 
