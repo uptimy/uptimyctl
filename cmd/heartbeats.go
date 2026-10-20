@@ -305,7 +305,7 @@ func applyHeartbeatFlags(cmd *cobra.Command, body map[string]interface{}, withDe
 				return err
 			}
 			body[f.field] = seconds
-		} else if _, set := body[f.field]; withDefaults && !set && !(onCron && f.flag == "interval") {
+		} else if _, set := body[f.field]; withDefaults && !set && (!onCron || f.flag != "interval") {
 			body[f.field] = int(f.def / time.Second)
 		}
 	}
