@@ -127,8 +127,7 @@ The spec matches the API's healthcheck payload:
     "config": { "url": "https://example.com/health", "method": "GET" },
     "active": true,
     "healthcheckTypeId": 1,
-    "schedulers": [],
-    "tags": []
+    "schedulers": []
   }
 
 Examples:
@@ -262,18 +261,6 @@ func setHealthcheckActive(uuid string, active bool) error {
 		"active":            active,
 		"healthcheckTypeId": healthcheckTypeID,
 		"schedulers":        hc["schedulers"],
-	}
-
-	if tags, ok := hc["tags"].([]interface{}); ok {
-		normalizedTags := make([]map[string]interface{}, 0, len(tags))
-		for _, tagRaw := range tags {
-			if tag, ok := tagRaw.(map[string]interface{}); ok {
-				if id, exists := tag["id"]; exists {
-					normalizedTags = append(normalizedTags, map[string]interface{}{"id": id})
-				}
-			}
-		}
-		body["tags"] = normalizedTags
 	}
 
 	_, err = c.Put("/v1/api/healthchecks/"+uuid, body)
