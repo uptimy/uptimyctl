@@ -96,6 +96,8 @@ uptimyctl healthchecks bulk -f monitors.json     # create apps + checks in one c
 uptimyctl healthchecks trigger <uuid>            # trigger immediate check
 uptimyctl healthchecks pause <uuid>              # disable/pause healthcheck
 uptimyctl healthchecks resume <uuid>             # enable/resume healthcheck
+uptimyctl healthchecks tag <uuid> --tag production --tag api   # replace its tags (names or ids)
+uptimyctl healthchecks tag <uuid> --clear        # remove all tags
 uptimyctl healthchecks delete <uuid>             # delete healthcheck
 ```
 
@@ -207,6 +209,7 @@ uptimyctl heartbeats update <uuid> --interval 12h        # only the flags you pa
 uptimyctl heartbeats pause <uuid>
 uptimyctl heartbeats resume <uuid>
 uptimyctl heartbeats ping <uuid>                         # send a test check-in
+uptimyctl heartbeats tag <uuid> --tag production,cron    # replace its tags; --clear removes them
 uptimyctl heartbeats delete <uuid>
 ```
 
@@ -215,6 +218,14 @@ Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats defau
 ```bash
 0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://heartbeats.upti.my/v1/monitors/<id>
 ```
+
+### Tags
+
+```bash
+uptimyctl tags list                                      # the workspace's tags (create them in the app)
+```
+
+Tags filter the lists in the app and workflow Filter nodes. `healthchecks tag` and `heartbeats tag` replace a monitor's tags, agent-managed monitors included.
 
 ### Dependencies
 
