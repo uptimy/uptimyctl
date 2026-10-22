@@ -223,8 +223,8 @@ The spec matches the API's group payload:
     "label": "Core services",
     "hidden": false,
     "order": 0,
-    "healthchecks": [
-      { "applicationUuid": "<app-uuid>", "order": 0, "showDailies": true, "isVisible": true }
+    "entries": [
+      { "kind": "service", "applicationUuid": "<app-uuid>", "order": 0, "showDailies": true, "isVisible": true }
     ]
   }
 
