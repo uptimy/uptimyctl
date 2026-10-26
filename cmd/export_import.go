@@ -58,6 +58,8 @@ var importCmd = &cobra.Command{
 	Short: "Import workspace configuration from a JSON file",
 	Long: `Import applications, healthchecks and tags into the workspace.
 The import is idempotent: existing items (matched by name) are skipped.
+A healthcheck the API or your plan doesn't allow is rejected, with its
+application, and the reason is printed.
 
 Examples:
   uptimyctl import config.json
@@ -108,6 +110,10 @@ Examples:
 				Tags         int `json:"tags"`
 				Applications int `json:"applications"`
 			} `json:"skipped"`
+			Rejected []struct {
+				Application string `json:"application"`
+				Reason      string `json:"reason"`
+			} `json:"rejected"`
 		}
 		if err := json.Unmarshal(result, &counts); err != nil {
 			output.PrintRawJSON(result)
@@ -119,6 +125,12 @@ Examples:
 			counts.Created.Tags, counts.Created.Applications, counts.Created.Healthchecks)
 		fmt.Printf("  Skipped: %d tags, %d applications\n",
 			counts.Skipped.Tags, counts.Skipped.Applications)
+		if len(counts.Rejected) > 0 {
+			fmt.Printf("  Rejected: %d applications (nothing created for them)\n", len(counts.Rejected))
+			for _, r := range counts.Rejected {
+				fmt.Printf("    %s: %s\n", r.Application, r.Reason)
+			}
+		}
 	},
 }
 
