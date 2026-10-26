@@ -134,6 +134,7 @@ Optional detection and alerting fields (left out: unchanged; null: default):
   "confirmRegions": 2,        regions that must confirm a failure for Down (default: a majority)
   "slowThresholdMs": 800,     Degraded when the p95 is above this (default: off)
   "slowWindowMinutes": 5,     the p95 window, 1-60 minutes
+  "recheckAttempts": 2,       reruns of a failed check before it counts, 2-5 (default: 2)
   "alertOnDegraded": true     open a medium incident when Degraded (default: off)
 
 Examples:
