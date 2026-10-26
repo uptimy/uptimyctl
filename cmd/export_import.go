@@ -12,7 +12,7 @@ import (
 
 var exportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Export workspace configuration (applications, healthchecks, tags, alert rules)",
+	Short: "Export workspace configuration (applications, healthchecks, tags)",
 	Long: `Export the entire workspace monitoring configuration as a JSON file.
 The output can be saved to a file and later imported into the same or a different workspace.
 
@@ -56,7 +56,7 @@ Examples:
 var importCmd = &cobra.Command{
 	Use:   "import <file>",
 	Short: "Import workspace configuration from a JSON file",
-	Long: `Import applications, healthchecks, tags, and alert rules into the workspace.
+	Long: `Import applications, healthchecks and tags into the workspace.
 The import is idempotent: existing items (matched by name) are skipped.
 
 Examples:
@@ -103,7 +103,6 @@ Examples:
 				Tags         int `json:"tags"`
 				Applications int `json:"applications"`
 				Healthchecks int `json:"healthchecks"`
-				AlertRules   int `json:"alertRules"`
 			} `json:"created"`
 			Skipped struct {
 				Tags         int `json:"tags"`
@@ -116,8 +115,8 @@ Examples:
 		}
 
 		fmt.Println("Import complete:")
-		fmt.Printf("  Created: %d tags, %d applications, %d healthchecks, %d alert rules\n",
-			counts.Created.Tags, counts.Created.Applications, counts.Created.Healthchecks, counts.Created.AlertRules)
+		fmt.Printf("  Created: %d tags, %d applications, %d healthchecks\n",
+			counts.Created.Tags, counts.Created.Applications, counts.Created.Healthchecks)
 		fmt.Printf("  Skipped: %d tags, %d applications\n",
 			counts.Skipped.Tags, counts.Skipped.Applications)
 	},

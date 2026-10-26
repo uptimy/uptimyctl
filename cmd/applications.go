@@ -118,7 +118,7 @@ var applicationsUpdateCmd = &cobra.Command{
 
 var applicationsDeleteCmd = &cobra.Command{
 	Use:   "delete <uuid>",
-	Short: "Delete an application and everything under it (healthchecks, alert rules)",
+	Short: "Delete an application and its healthcheck",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		c := newClient()
