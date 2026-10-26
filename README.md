@@ -82,7 +82,7 @@ uptimyctl apps list                              # alias
 uptimyctl applications get <uuid>
 uptimyctl applications create --name "api" --description "Public API"
 uptimyctl applications update <uuid> --name "api-v2"
-uptimyctl applications delete <uuid>             # deletes healthchecks and alert rules too
+uptimyctl applications delete <uuid>             # deletes its healthcheck too
 ```
 
 ### Healthchecks
@@ -103,16 +103,7 @@ uptimyctl healthchecks delete <uuid>             # delete healthcheck
 
 See `uptimyctl healthchecks upsert --help` and `uptimyctl healthchecks bulk --help` for the JSON spec formats.
 
-### Alert Rules
-
-```bash
-uptimyctl alert-rules list --application <app-uuid>
-uptimyctl ar list --application <app-uuid>       # alias
-uptimyctl alert-rules get <uuid> --application <app-uuid>
-uptimyctl alert-rules create --application <app-uuid> -f rule.json
-uptimyctl alert-rules update <uuid> --application <app-uuid> -f rule.json
-uptimyctl alert-rules delete <uuid> --application <app-uuid>
-```
+When a healthcheck counts as down or degraded, and whether degraded opens an incident, are fields of its spec (`confirmRegions`, `slowThresholdMs`, `slowWindowMinutes`, `alertOnDegraded`); see `uptimyctl healthchecks upsert --help`.
 
 ### Status Pages
 

@@ -130,6 +130,12 @@ The spec matches the API's healthcheck payload:
     "schedulers": []
   }
 
+Optional detection and alerting fields (left out: unchanged; null: default):
+  "confirmRegions": 2,        regions that must confirm a failure for Down (default: a majority)
+  "slowThresholdMs": 800,     Degraded when the p95 is above this (default: off)
+  "slowWindowMinutes": 5,     the p95 window, 1-60 minutes
+  "alertOnDegraded": true     open a medium incident when Degraded (default: off)
+
 Examples:
   uptimyctl healthchecks upsert --application <app-uuid> -f check.json
   echo '{...}' | uptimyctl healthchecks upsert --application <app-uuid> -f -`,
