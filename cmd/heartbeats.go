@@ -26,6 +26,9 @@ A heartbeat expects a check-in (an HTTP request to its ping URL) at least
 every --interval, or at the times of a --cron expression in --timezone, plus
 --grace. When check-ins stop, it goes down and alerts.
 
+With --no-schedule no check-in is expected: runs are recorded whenever they
+come and failed runs alert, but nothing alerts if the job stops running.
+
 Heartbeats use a separate domain (default https://heartbeats.upti.my),
 overridable with --heartbeats-api-url or UPTIMYCTL_HEARTBEATS_API_URL.`,
 }
@@ -58,9 +61,15 @@ func parseSeconds(flag, value string, allowZero bool) (int, error) {
 	return seconds, nil
 }
 
-// heartbeatSchedule is a heartbeat's schedule for tables: "1h", or
-// "0 3 * * * (Europe/Berlin)" for a cron one.
+// heartbeatSchedule is a heartbeat's schedule for tables: "1h",
+// "0 3 * * * (Europe/Berlin)" for a cron one, or "none".
 func heartbeatSchedule(hb map[string]interface{}) string {
+	if noSchedule, _ := hb["noSchedule"].(bool); noSchedule {
+		if maxRun, _ := hb["maxRunSeconds"].(float64); maxRun > 0 {
+			return "none (runs within " + formatSeconds(maxRun) + ")"
+		}
+		return "none"
+	}
 	if cron := str(hb["cron"]); cron != "" {
 		tz := str(hb["timezone"])
 		if tz == "" {
@@ -130,7 +139,7 @@ func getHeartbeat(c *client.Client, uuid string) map[string]interface{} {
 // field is carried over and callers change only what they mean to.
 func heartbeatRequest(hb map[string]interface{}) map[string]interface{} {
 	body := map[string]interface{}{"paused": hb["pausedAt"] != nil}
-	for _, k := range []string{"name", "description", "intervalSeconds", "cron", "timezone", "graceSeconds", "failureThreshold", "recoveryThreshold", "enforceOrder", "steps"} {
+	for _, k := range []string{"name", "description", "intervalSeconds", "cron", "timezone", "noSchedule", "maxRunSeconds", "graceSeconds", "failureThreshold", "recoveryThreshold", "enforceOrder", "steps"} {
 		if v, ok := hb[k]; ok {
 			body[k] = v
 		}
@@ -227,6 +236,7 @@ and infrastructure-as-code.
 Examples:
   uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m
   uptimyctl heartbeats create --name "Report" --cron "0 9 * * 1-5" --timezone Europe/Berlin
+  uptimyctl heartbeats create --name "Deploy" --no-schedule
   uptimyctl heartbeats create --name "Queue worker" --interval 1m --grace 30s -o json
   uptimyctl heartbeats create -f heartbeat.json -o json
 
@@ -270,25 +280,43 @@ Then call the ping URL at the end of every run:
 // applyHeartbeatFlags sets body fields from the flags the user passed. With
 // withDefaults, unset interval/grace fall back to the web app's defaults
 // unless the body (e.g. a -f spec) already has them; a cron heartbeat gets no
-// default interval.
+// default interval, and one with no schedule neither.
 func applyHeartbeatFlags(cmd *cobra.Command, body map[string]interface{}, withDefaults bool) error {
+	noSchedule, _ := cmd.Flags().GetBool("no-schedule")
 	switch {
 	case cmd.Flags().Changed("cron") && cmd.Flags().Changed("interval"):
 		return fmt.Errorf("use --interval or --cron, not both")
+	case noSchedule && (cmd.Flags().Changed("cron") || cmd.Flags().Changed("interval")):
+		return fmt.Errorf("--no-schedule takes no --interval or --cron")
+	case noSchedule:
+		body["noSchedule"], body["cron"], body["intervalSeconds"] = true, "", 0
 	case cmd.Flags().Changed("cron"):
 		cron, _ := cmd.Flags().GetString("cron")
 		if strings.TrimSpace(cron) == "" {
 			return fmt.Errorf("--cron needs an expression, e.g. \"0 3 * * *\"; use --interval to switch back")
 		}
-		body["cron"], body["intervalSeconds"] = cron, 0
+		body["cron"], body["intervalSeconds"], body["noSchedule"] = cron, 0, false
 	case cmd.Flags().Changed("interval"):
-		// Switches a cron heartbeat back to an interval.
-		body["cron"] = ""
+		// Switches a cron heartbeat, or one with no schedule, back to an interval.
+		body["cron"], body["noSchedule"] = "", false
 	}
 	if cmd.Flags().Changed("timezone") {
 		body["timezone"], _ = cmd.Flags().GetString("timezone")
 	}
+	if cmd.Flags().Changed("max-run") {
+		v, _ := cmd.Flags().GetString("max-run")
+		seconds, err := parseSeconds("max-run", v, true)
+		if err != nil {
+			return err
+		}
+		body["maxRunSeconds"] = seconds
+	}
 	onCron := str(body["cron"]) != ""
+	unscheduled, _ := body["noSchedule"].(bool)
+	if unscheduled {
+		// Nothing is late without a schedule: no interval, no grace.
+		return applyHeartbeatNameAndThresholds(cmd, body)
+	}
 
 	for _, f := range []struct {
 		flag, field string
@@ -309,6 +337,10 @@ func applyHeartbeatFlags(cmd *cobra.Command, body map[string]interface{}, withDe
 			body[f.field] = int(f.def / time.Second)
 		}
 	}
+	return applyHeartbeatNameAndThresholds(cmd, body)
+}
+
+func applyHeartbeatNameAndThresholds(cmd *cobra.Command, body map[string]interface{}) error {
 	for flag, field := range map[string]string{"name": "name", "description": "description"} {
 		if cmd.Flags().Changed(flag) {
 			body[field], _ = cmd.Flags().GetString(flag)
@@ -421,6 +453,8 @@ func init() {
 		c.Flags().String("cron", "", `Expected check-in times instead of an interval: a cron expression, e.g. "0 3 * * *" or @daily`)
 		c.Flags().String("timezone", "", "Time zone of --cron, e.g. Europe/Berlin (default UTC)")
 		c.Flags().String("grace", "", "Extra time allowed after the interval, e.g. 30s, 5m (default 5m on create)")
+		c.Flags().Bool("no-schedule", false, "Expect no check-in: record runs whenever they come and alert on failed ones")
+		c.Flags().String("max-run", "", "With --no-schedule and steps: fail a run not finished this long after its first step, e.g. 30m (0: no limit)")
 		c.Flags().Int("failure-threshold", 0, "Missed check-ins before it goes down (default 1)")
 		c.Flags().Int("recovery-threshold", 0, "Check-ins needed to recover (default 1)")
 	}

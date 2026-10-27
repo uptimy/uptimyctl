@@ -60,6 +60,8 @@ func TestApplyHeartbeatFlags(t *testing.T) {
 		c.Flags().String("cron", "", "")
 		c.Flags().String("timezone", "", "")
 		c.Flags().String("grace", "", "")
+		c.Flags().Bool("no-schedule", false, "")
+		c.Flags().String("max-run", "", "")
 		c.Flags().Int("failure-threshold", 0, "")
 		c.Flags().Int("recovery-threshold", 0, "")
 		if err := c.Flags().Parse(args); err != nil {
@@ -122,7 +124,28 @@ func TestApplyHeartbeatFlags(t *testing.T) {
 		t.Fatalf("switch to interval: %v", body)
 	}
 
-	for _, args := range [][]string{{"--cron", "@daily", "--interval", "1h"}, {"--cron", " "}} {
+	// No schedule: no interval or grace default.
+	body = map[string]interface{}{"name": "x"}
+	if err := applyHeartbeatFlags(newCmd("--no-schedule", "--max-run", "30m"), body, true); err != nil {
+		t.Fatal(err)
+	}
+	if body["noSchedule"] != true || body["intervalSeconds"] != 0 || body["cron"] != "" || body["maxRunSeconds"] != 1800 {
+		t.Fatalf("no-schedule create: %v", body)
+	}
+	if _, set := body["graceSeconds"]; set {
+		t.Fatalf("no-schedule create got a grace: %v", body)
+	}
+
+	// --interval on one with no schedule switches it back.
+	body = map[string]interface{}{"name": "x", "intervalSeconds": 0.0, "cron": "", "noSchedule": true}
+	if err := applyHeartbeatFlags(newCmd("--interval", "1h"), body, false); err != nil {
+		t.Fatal(err)
+	}
+	if body["noSchedule"] != false || body["intervalSeconds"] != 3600 {
+		t.Fatalf("switch from no schedule to interval: %v", body)
+	}
+
+	for _, args := range [][]string{{"--cron", "@daily", "--interval", "1h"}, {"--cron", " "}, {"--no-schedule", "--interval", "1h"}, {"--no-schedule", "--cron", "@daily"}} {
 		if err := applyHeartbeatFlags(newCmd(args...), map[string]interface{}{}, true); err == nil {
 			t.Fatalf("%v accepted", args)
 		}
@@ -135,6 +158,12 @@ func TestHeartbeatSchedule(t *testing.T) {
 	}
 	if got := heartbeatSchedule(map[string]interface{}{"intervalSeconds": 0.0, "cron": "0 3 * * *", "timezone": "Europe/Berlin"}); got != "0 3 * * * (Europe/Berlin)" {
 		t.Errorf("cron: %q", got)
+	}
+	if got := heartbeatSchedule(map[string]interface{}{"intervalSeconds": 0.0, "noSchedule": true}); got != "none" {
+		t.Errorf("none: %q", got)
+	}
+	if got := heartbeatSchedule(map[string]interface{}{"intervalSeconds": 0.0, "noSchedule": true, "maxRunSeconds": 1800.0}); got != "none (runs within 30m)" {
+		t.Errorf("none with a max run: %q", got)
 	}
 }
 
