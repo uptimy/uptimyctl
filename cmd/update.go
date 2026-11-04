@@ -34,7 +34,7 @@ write: there, run 'sudo uptimyctl update'.
 			exitErr(err)
 		}
 		current := version.Version
-		available := current != latest.Version
+		available := current == "dev" || selfupdate.Newer(latest.Version, current)
 
 		if check || !available {
 			if output.IsJSON() {

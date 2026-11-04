@@ -26,8 +26,10 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+	err := rootCmd.Execute()
+	printUpdateNotice()
+	if err != nil {
+		exit(1)
 	}
 }
 
@@ -41,6 +43,7 @@ func init() {
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		output.Format = flagOutput
+		startUpdateCheck(cmd)
 	}
 }
 
@@ -49,7 +52,7 @@ func newClient() *client.Client {
 	apiURL := config.GetAPIURL(flagAPIURL)
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
-		os.Exit(1)
+		exit(1)
 	}
 	return client.New(apiURL, apiKey)
 }
@@ -60,7 +63,7 @@ func newIncidentsClient() *client.Client {
 	apiURL := config.GetIncidentsAPIURL(flagIncidentsAPIURL)
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
-		os.Exit(1)
+		exit(1)
 	}
 	return client.New(apiURL, apiKey)
 }
@@ -70,7 +73,7 @@ func newHeartbeatsClient() *client.Client {
 	apiKey := config.GetAPIKey(flagAPIKey)
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
-		os.Exit(1)
+		exit(1)
 	}
 	return client.New(config.GetHeartbeatsURL(flagHeartbeatsURL), apiKey)
 }
@@ -80,12 +83,12 @@ func newReportsClient() *client.Client {
 	apiKey := config.GetAPIKey(flagAPIKey)
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
-		os.Exit(1)
+		exit(1)
 	}
 	return client.New(config.GetReportsURL(flagReportsURL), apiKey)
 }
 
 func exitErr(err error) {
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-	os.Exit(1)
+	exit(1)
 }

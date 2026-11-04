@@ -39,6 +39,16 @@ func configPath() string {
 	return filepath.Join(configDir(), "config.yaml")
 }
 
+// UpdateCheckPath is where the latest release version is cached for the
+// update notice; "" without a home directory.
+func UpdateCheckPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "uptimyctl", "update-check.json")
+}
+
 func Load() *Config {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

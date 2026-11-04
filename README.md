@@ -49,6 +49,12 @@ uptimyctl update --check  # only tell me whether there's a newer release
 `checksums.txt`, like the install script does. Builds from source (`go install`,
 `make build`) report version `dev` and are updated the way they were built.
 
+In a terminal, uptimyctl says when a newer release is out, after a command's
+output (failed commands included). It looks this up on GitHub at most once a
+day and caches it in `~/.config/uptimyctl/update-check.json`. It stays quiet
+with `-o json`, in CI (`CI` set), when stderr isn't a terminal, and with
+`UPTIMYCTL_NO_UPDATE_CHECK=1`.
+
 ### Uninstall
 
 ```bash

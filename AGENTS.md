@@ -122,5 +122,5 @@ uptimyctl dependencies follow stripe -o json        # outages then open incident
 - Do not commit real API keys or workspace exports containing secrets.
 - Release flow is tag-based via GitHub Actions and GoReleaser.
 - Install script: `scripts/install.sh`
-- Self-update: `uptimyctl update` (`--check` only reports; `sudo` when installed in `/usr/local/bin`). The archive names it downloads follow `.goreleaser.yaml`: change both together.
+- Self-update: `uptimyctl update` (`--check` only reports; `sudo` when installed in `/usr/local/bin`). The "newer release" notice (`cmd/notice.go`) only shows on a terminal: never with `-o json`, in CI, or with `UPTIMYCTL_NO_UPDATE_CHECK=1`. The archive names it downloads follow `.goreleaser.yaml`: change both together.
 - Uninstall script: `scripts/uninstall.sh`

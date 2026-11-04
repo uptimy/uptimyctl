@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,6 +62,39 @@ type PermissionError struct {
 
 func (e *PermissionError) Error() string {
 	return "no permission to write to " + e.Dir
+}
+
+// Newer reports whether version a (MAJOR.MINOR.PATCH, as `uptimyctl version`
+// prints it) is newer than b. Anything else, like a source build's "dev",
+// is never newer or older.
+func Newer(a, b string) bool {
+	pa, okA := parseVersion(a)
+	pb, okB := parseVersion(b)
+	if !okA || !okB {
+		return false
+	}
+	for i := range pa {
+		if pa[i] != pb[i] {
+			return pa[i] > pb[i]
+		}
+	}
+	return false
+}
+
+func parseVersion(v string) ([3]int, bool) {
+	var p [3]int
+	parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
+	if len(parts) != 3 {
+		return p, false
+	}
+	for i, s := range parts {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 0 {
+			return p, false
+		}
+		p[i] = n
+	}
+	return p, true
 }
 
 // Latest returns the latest published release.

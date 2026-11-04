@@ -236,3 +236,26 @@ func TestInstallIntoAReadOnlyDirectory(t *testing.T) {
 		t.Fatalf("want a PermissionError for %s, got %v", dir, err)
 	}
 }
+
+func TestNewer(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"1.9.0", "1.8.0", true},
+		{"1.10.0", "1.9.0", true},
+		{"2.0.0", "1.99.99", true},
+		{"1.8.1", "1.8.0", true},
+		{"v1.9.0", "1.8.0", true},
+		{"1.8.0", "1.8.0", false},
+		{"1.8.0", "1.9.0", false},
+		{"1.9.0", "dev", false},
+		{"dev", "1.8.0", false},
+		{"1.9", "1.8.0", false},
+	}
+	for _, c := range cases {
+		if got := Newer(c.a, c.b); got != c.want {
+			t.Errorf("Newer(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
