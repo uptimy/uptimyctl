@@ -207,7 +207,7 @@ uptimyctl heartbeats delete <uuid>
 Durations accept `90s`, `5m`, `1h`, `24h` or plain seconds. New heartbeats default to `--interval 1h --grace 5m`, like the web app. `--cron` takes a five-field expression or `@daily`-style shortcut in `--timezone` (default UTC) instead of an interval; `--interval` on a cron heartbeat switches it back. In the monitored job itself, call the ping URL directly (no API key needed):
 
 ```bash
-0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://heartbeats.upti.my/v1/monitors/<id>
+0 3 * * *  /usr/local/bin/backup.sh && curl -fsS https://ping.upti.my/<id>
 ```
 
 ### Tags
