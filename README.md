@@ -38,6 +38,17 @@ The binary is placed in `bin/uptimyctl`. To install it system-wide:
 sudo cp bin/uptimyctl /usr/local/bin/
 ```
 
+### Update
+
+```bash
+uptimyctl update          # sudo uptimyctl update if it's in /usr/local/bin
+uptimyctl update --check  # only tell me whether there's a newer release
+```
+
+`update` installs the latest release for your platform, checked against its
+`checksums.txt`, like the install script does. Builds from source (`go install`,
+`make build`) report version `dev` and are updated the way they were built.
+
 ### Uninstall
 
 ```bash
