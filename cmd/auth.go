@@ -63,15 +63,15 @@ on stdin.`,
 		keyInput, err := readLoginKey(cmd, reader, cfg.APIURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exit(1)
 		}
 		if keyInput == "" {
 			fmt.Fprintln(os.Stderr, "Error: API key is required.")
-			os.Exit(1)
+			exit(1)
 		}
 		if !strings.HasPrefix(keyInput, "upt_") {
 			fmt.Fprintln(os.Stderr, "Error: API key must start with 'upt_'.")
-			os.Exit(1)
+			exit(1)
 		}
 		cfg.APIKey = keyInput
 
@@ -80,12 +80,12 @@ on stdin.`,
 		_, err = c.Get("/v1/api/applications/", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to verify API key: %v\n", err)
-			os.Exit(1)
+			exit(1)
 		}
 
 		if err := config.Save(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to save config: %v\n", err)
-			os.Exit(1)
+			exit(1)
 		}
 
 		if output.IsJSON() {
