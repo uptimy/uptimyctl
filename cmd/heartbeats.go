@@ -30,7 +30,8 @@ With --no-schedule no check-in is expected: runs are recorded whenever they
 come and failed runs alert, but nothing alerts if the job stops running.
 
 Heartbeats use a separate domain (default https://heartbeats.upti.my),
-overridable with --heartbeats-api-url or UPTIMYCTL_HEARTBEATS_API_URL.`,
+overridable with --heartbeats-api-url or UPTIMYCTL_HEARTBEATS_API_URL.
+Ping URLs are on https://ping.upti.my (UPTIMYCTL_PING_URL).`,
 }
 
 // Defaults match the web app's "Create heartbeat".
@@ -107,7 +108,7 @@ func heartbeatPingURL(hb map[string]interface{}) string {
 	if publicID == "" {
 		return ""
 	}
-	return strings.TrimRight(config.GetHeartbeatsURL(flagHeartbeatsURL), "/") + "/v1/monitors/" + url.PathEscape(publicID)
+	return strings.TrimRight(config.GetPingURL(), "/") + "/" + url.PathEscape(publicID)
 }
 
 func heartbeatStatus(hb map[string]interface{}) string {
@@ -241,7 +242,7 @@ Examples:
   uptimyctl heartbeats create -f heartbeat.json -o json
 
 Then call the ping URL at the end of every run:
-  curl -fsS https://heartbeats.upti.my/v1/monitors/<id>`,
+  curl -fsS https://ping.upti.my/<id>`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var body map[string]interface{}
 		if file, _ := cmd.Flags().GetString("file"); file != "" {

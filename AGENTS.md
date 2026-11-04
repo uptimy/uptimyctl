@@ -60,7 +60,7 @@ uptimyctl heartbeats create --name "Nightly backup" --interval 24h --grace 30m \
   --client-ref backup-prod -o json          # .credential.publicId -> ping URL (also: heartbeats get -> pingUrl)
 
 # 2. The job calls its ping URL at the end of every successful run (no API key)
-curl -fsS https://heartbeats.upti.my/v1/monitors/<publicId>
+curl -fsS https://ping.upti.my/<publicId>
 
 # 3. Verify, and pause during planned downtime
 uptimyctl heartbeats ping <uuid> -o json

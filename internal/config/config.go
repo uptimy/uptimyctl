@@ -12,6 +12,7 @@ const (
 	DefaultAPIURL          = "https://api.upti.my"
 	DefaultIncidentsAPIURL = "https://workflows.upti.my"
 	DefaultHeartbeatsURL   = "https://heartbeats.upti.my"
+	DefaultPingURL         = "https://ping.upti.my"
 	DefaultReportsURL      = "https://reports.upti.my"
 	DefaultAppURL          = "https://app.upti.my"
 	ConfigFileName         = ".uptimyctl"
@@ -81,6 +82,14 @@ func GetAppURL() string {
 	return DefaultAppURL
 }
 
+// GetPingURL returns the base of heartbeat check-in URLs (<base>/<publicId>).
+func GetPingURL() string {
+	if envURL := os.Getenv("UPTIMYCTL_PING_URL"); envURL != "" {
+		return envURL
+	}
+	return DefaultPingURL
+}
+
 func GetAPIKey(flagOverride string) string {
 	if flagOverride != "" {
 		return flagOverride
@@ -119,8 +128,8 @@ func GetIncidentsAPIURL(flagOverride string) string {
 	return DefaultIncidentsAPIURL
 }
 
-// GetHeartbeatsURL returns the heartbeat service base URL: both its API
-// (/v1/api/heartbeat-monitors) and the check-in URLs (/v1/monitors/<id>).
+// GetHeartbeatsURL returns the heartbeat service API base URL
+// (/v1/api/heartbeat-monitors).
 func GetHeartbeatsURL(flagOverride string) string {
 	if flagOverride != "" {
 		return flagOverride
