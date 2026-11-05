@@ -34,8 +34,8 @@ UPTIMYCTL_API_KEY=upt_... uptimyctl export -f uptimy.yaml
 ## The Workspace as a File
 
 The way to set up a whole workspace: keep it in `uptimy.yaml` in the repo,
-change the file, show the plan, apply it. Monitors, heartbeats, status pages
-and alerts are matched by name.
+change the file, show the plan, apply it. Monitors, heartbeats, status pages,
+alerts and reports are matched by name.
 
 ```bash
 uptimyctl export -f uptimy.yaml                    # Start from the live workspace
@@ -67,13 +67,25 @@ alerts:
   - name: Prod to #ops
     to: { integration: slack }                     # a connected integration; or emails: [...], webhook: https://...
     tags: [prod]
+reports:
+  - name: All monitors                             # the default report: every monitor, can't be removed
+    schedule: weekly
+    emails: [ops@acme.com]
+  - name: Globex                                   # one per client (Growth and above)
+    tags: [globex]                                 # or monitors: [...]; neither = every monitor
+    sla: 99.5
+    emails: [cto@globex.com]                       # emailed monthly on the 1st at 09:00
+    brand: { name: Globex, color: "#0055ff" }
 ```
 
 Defaults are left out: every region the plan allows, every 60s (ssl hourly),
-30s timeout, opened and resolved incidents. Things not in the file are kept
-unless `--prune` is given; agent-managed monitors and workflows made in the
-workflow editor are never touched. Integrations (Slack and the like) are
-connected in the app.
+30s timeout, opened and resolved incidents; reports at 99.9%, monthly on the
+1st at 09:00 in the default report's timezone when they have emails, read on
+demand when not. Things not in the file are kept unless `--prune` is given;
+agent-managed monitors and workflows made in the workflow editor are never
+touched, and the default report is never removed. A file with no `reports:`
+section (exported before reports were in it) leaves reports alone. Integrations (Slack and
+the like), report share links and logos are set up in the app.
 
 ## Configuring Monitoring Command by Command
 

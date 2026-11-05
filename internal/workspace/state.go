@@ -22,9 +22,10 @@ type Caller interface {
 }
 
 // Services are the APIs a workspace lives in: monitors, tags and status
-// pages on api, cron monitors on heartbeat, alerts on workflows.
+// pages on api, cron monitors on heartbeat, alerts on workflows, reports on
+// reports.
 type Services struct {
-	API, Workflows, Heartbeats Caller
+	API, Workflows, Heartbeats, Reports Caller
 }
 
 // State is the live workspace, as far as the file describes it.
@@ -38,6 +39,7 @@ type State struct {
 	StatusPages   []livePage
 	Workflows     []liveWorkflow
 	Integrations  []integration
+	Reports       []liveReport
 
 	// Not in the file (defined in an Uptimy Agent, or a check type the file
 	// can't express); status pages and alerts can still name them.
@@ -294,6 +296,12 @@ func Fetch(s Services) (*State, error) {
 		return nil, err
 	}
 	st.Integrations = integrations.Results
+
+	var reports results[liveReport]
+	if err := get(s.Reports, "/v1/api/reports/definitions", &reports); err != nil {
+		return nil, err
+	}
+	st.Reports = reports.Results
 	return st, nil
 }
 
