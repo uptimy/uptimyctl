@@ -26,8 +26,9 @@ func resolveHeartbeat(h Heartbeat) heartbeatWant {
 			w.timezone = "UTC"
 		}
 	}
-	// The app's defaults for a new heartbeat.
-	if w.grace == 0 {
+	// The app's defaults for a new heartbeat. Grace is how late a run may be;
+	// with no schedule nothing is late, so it stays 0.
+	if w.grace == 0 && !h.NoSchedule {
 		w.grace = 300
 	}
 	if w.failure == 0 {
@@ -184,7 +185,7 @@ func exportHeartbeat(h liveHeartbeat, st *State) Heartbeat {
 	default:
 		out.Every = h.IntervalSeconds
 	}
-	if h.GraceSeconds != 300 {
+	if defaultGrace := 300; h.NoSchedule && h.GraceSeconds != 0 || !h.NoSchedule && h.GraceSeconds != defaultGrace {
 		out.Grace = h.GraceSeconds
 	}
 	if h.FailureThreshold != 1 {
