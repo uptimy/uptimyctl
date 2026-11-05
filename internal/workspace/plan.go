@@ -216,7 +216,7 @@ func MakePlan(f *File, st *State, opt Options) (*Plan, error) {
 		}
 		var missing []string
 		for _, name := range a.Monitors {
-			if _, _, ok := st.subject(name); !ok && !fileHasSubject(f, name) {
+			if _, _, ok := st.subject(name); !ok && !fileHasSubject(f, name) && !isUUID(name) {
 				missing = append(missing, name)
 			}
 		}

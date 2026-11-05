@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -333,16 +334,16 @@ func (st *State) subjectName(uuid string) string {
 	return ""
 }
 
-// subject finds a monitor or heartbeat by name: how status pages and alerts
-// refer to them (an application UUID for a monitor).
+// subject finds a monitor or heartbeat by name or UUID: how status pages and
+// alerts refer to them (an application UUID for a monitor).
 func (st *State) subject(name string) (kind, uuid string, ok bool) {
 	for _, m := range slices.Concat(st.Monitors, st.agentMonitors) {
-		if strings.EqualFold(m.name(), name) {
+		if strings.EqualFold(m.name(), name) || m.appUUID() == name {
 			return "service", m.appUUID(), true
 		}
 	}
 	for _, h := range slices.Concat(st.Heartbeats, st.agentHeartbeats) {
-		if strings.EqualFold(h.Name, name) {
+		if strings.EqualFold(h.Name, name) || h.UUID == name {
 			return "heartbeat", h.UUID, true
 		}
 	}
@@ -366,6 +367,14 @@ func plainRegion(name string) string {
 		return (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9')
 	}))
 }
+
+// isUUID reports whether s is written like a UUID: how the file keeps an
+// alert's reference to a monitor that's been deleted.
+func isUUID(s string) bool {
+	return uuidPattern.MatchString(s)
+}
+
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 func (st *State) allRegionNames() []string {
 	out := make([]string, 0, len(st.Regions))

@@ -70,10 +70,16 @@ func alertBody(a Alert, st *State) (map[string]any, error) {
 	sources := []string{}
 	for _, name := range a.Monitors {
 		_, uuid, ok := st.subject(name)
-		if !ok {
+		switch {
+		case ok:
+			sources = append(sources, uuid)
+		case isUUID(name):
+			// A deleted monitor's UUID stays: dropping it would widen the
+			// alert from matching nothing to matching every incident.
+			sources = append(sources, name)
+		default:
 			return nil, fmt.Errorf("no monitor or heartbeat named %q", name)
 		}
-		sources = append(sources, uuid)
 	}
 	severities := a.Severities
 	if severities == nil {
@@ -108,9 +114,19 @@ func exportAlert(w liveWorkflow, st *State) Alert {
 	if strings.Join(events, ",") != "opened,resolved" {
 		out.Events = events
 	}
-	for _, u := range la.SourceUUIDs {
+	out.Monitors = sourceNames(la.SourceUUIDs, st)
+	return out
+}
+
+// sourceNames names an alert's sources; a deleted monitor keeps its UUID,
+// so the scope survives export and apply.
+func sourceNames(uuids []string, st *State) []string {
+	var out []string
+	for _, u := range uuids {
 		if name := st.subjectName(u); name != "" {
-			out.Monitors = append(out.Monitors, name)
+			out = append(out, name)
+		} else {
+			out = append(out, u)
 		}
 	}
 	return out
@@ -146,11 +162,7 @@ func alertChanges(a Alert, w liveWorkflow, st *State) []string {
 	if diff := setDiff("severities", la.Severities, a.Severities); diff != "" {
 		d = append(d, diff)
 	}
-	liveMonitors := []string{}
-	for _, u := range la.SourceUUIDs {
-		liveMonitors = append(liveMonitors, st.subjectName(u))
-	}
-	if diff := setDiff("monitors", liveMonitors, a.Monitors); diff != "" {
+	if diff := setDiff("monitors", sourceNames(la.SourceUUIDs, st), a.Monitors); diff != "" {
 		d = append(d, diff)
 	}
 	if w.Enabled == a.Paused {
