@@ -91,7 +91,8 @@ func services() (Services, *fake, *fake, *fake) {
 	workflows := &fake{responses: map[string]string{
 		"GET /v1/api/workflows/": `{"results":[
 			{"uuid":"wf-default","name":"Default email alerts","enabled":true,"alert":null},
-			{"uuid":"wf-ops","name":"Prod to #ops","enabled":true,"alert":{"destination":{"type":"integration","integrationUuid":"int-1","provider":"slack"},"events":["opened","resolved"],"tagIds":[7],"severities":[],"sourceUuids":["app-web"]}}]}`,
+			{"uuid":"wf-ops","name":"Prod to #ops","enabled":true,"alert":{"destination":{"type":"integration","integrationUuid":"int-1","provider":"slack"},"events":["opened","resolved"],"tagIds":[7],"severities":[],"sourceUuids":["app-web"]}},
+			{"uuid":"wf-old","name":"Old API alert","enabled":false,"alert":{"destination":{"type":"webhook","url":"https://hooks.acme.test/old"},"events":["opened","resolved"],"tagIds":[],"severities":[],"sourceUuids":["0a1b2c3d-0000-4000-8000-000000000001"]}}]}`,
 		"GET /v1/api/integrations/": `{"results":[{"uuid":"int-1","provider":"slack","name":"Acme","config":{"channelName":"ops"}},{"uuid":"int-2","provider":"github","name":"acme/app","config":{}}]}`,
 	}}
 	return Services{API: api, Workflows: workflows, Heartbeats: heartbeats}, api, heartbeats, workflows
@@ -180,6 +181,10 @@ func TestExportReadsLikeAHandWrittenFile(t *testing.T) {
 	}
 	if a := f.Alerts[0]; a.To.Integration != "Slack #ops (Acme)" || a.Events != nil || a.Monitors[0] != "Website" {
 		t.Errorf("alert = %+v", a)
+	}
+	// Its only monitor was deleted: the UUID stays, or the alert would match everything.
+	if a := f.Alerts[1]; len(a.Monitors) != 1 || a.Monitors[0] != "0a1b2c3d-0000-4000-8000-000000000001" {
+		t.Errorf("alert scoped to a deleted monitor = %+v", a)
 	}
 }
 
@@ -330,5 +335,22 @@ alerts:
 	}
 	if _, err := Parse([]byte("version: 1\n")); err == nil {
 		t.Error("version 1 must fail")
+	}
+}
+
+func TestAlertKeepsADeletedMonitorsScope(t *testing.T) {
+	f, st, _, _, _, _ := roundTrip(t)
+	old := f.Alerts[1]
+	old.Events = []string{"opened"} // any change makes apply send the whole alert
+	b, err := alertBody(old, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sources := b["sourceUuids"].([]string); len(sources) != 1 || sources[0] != "0a1b2c3d-0000-4000-8000-000000000001" {
+		t.Errorf("sourceUuids = %v: dropping them widens the alert", sources)
+	}
+	old.Monitors = []string{"Nope"}
+	if _, err := alertBody(old, st); err == nil {
+		t.Error("a name that isn't a monitor must still fail")
 	}
 }
