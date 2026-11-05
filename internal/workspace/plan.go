@@ -14,12 +14,13 @@ import (
 // Change is one thing apply would do.
 type Change struct {
 	Action  string   `json:"action"` // add, change, remove
-	Kind    string   `json:"kind"`   // tag, monitor, heartbeat, status page, alert
+	Kind    string   `json:"kind"`   // tag, monitor, heartbeat, status page, alert, report
 	Name    string   `json:"name"`
 	Details []string `json:"details,omitempty"`
 
 	// Apply runs steps in order: tags; monitors and heartbeats; then, read
-	// again so they can be named, status pages and alerts; removals last.
+	// again so they can be named, status pages, alerts and reports; removals
+	// last.
 	step int
 	run  func(Services, *State) error
 }
@@ -68,6 +69,9 @@ func MakePlan(f *File, st *State, opt Options) (*Plan, error) {
 	}
 	for _, a := range f.Alerts {
 		tags = append(tags, a.Tags...)
+	}
+	for _, r := range f.Reports {
+		tags = append(tags, r.Tags...)
 	}
 	for _, name := range tags {
 		if _, ok := st.tagID(name); ok || seen[strings.ToLower(name)] {
@@ -264,11 +268,61 @@ func MakePlan(f *File, st *State, opt Options) (*Plan, error) {
 		})
 	}
 
+	// Reports. A file without a reports section (exported before they were
+	// in it) leaves them alone: pruning would delete their sent reports.
+	inFile = map[string]bool{}
+	for _, r := range f.Reports {
+		inFile[strings.ToLower(r.Name)] = true
+		var missing []string
+		for _, name := range r.Monitors {
+			if _, _, ok := st.subject(name); !ok && !fileHasSubject(f, name) && !isUUID(name) {
+				missing = append(missing, name)
+			}
+		}
+		if len(missing) > 0 {
+			fail("report", r.Name, fmt.Errorf("no monitor or heartbeat named %s", strings.Join(missing, ", ")))
+			continue
+		}
+		w := resolveReport(r, st)
+		live := findReport(st, r.Name)
+		switch {
+		case live == nil:
+			p.Changes = append(p.Changes, Change{Action: "add", Kind: "report", Name: r.Name, Details: []string{w.describe()}, step: 2,
+				run: func(s Services, st *State) error { return createReport(s, st, resolveReport(r, st)) }})
+		case live.IsDefault && w.scope() != "workspace":
+			fail("report", r.Name, errors.New("the default report covers every monitor; add another report for some of them"))
+		default:
+			if d := reportChanges(w, *live, st); len(d) > 0 {
+				l := *live
+				p.Changes = append(p.Changes, Change{Action: "change", Kind: "report", Name: r.Name, Details: d, step: 2,
+					run: func(s Services, st *State) error { return updateReport(s, st, resolveReport(r, st), l) }})
+			}
+		}
+	}
+	for _, r := range st.Reports {
+		if f.Reports == nil {
+			break
+		}
+		if inFile[strings.ToLower(r.Name)] {
+			continue
+		}
+		// The default report can't be removed.
+		if !opt.Prune || r.IsDefault {
+			keep("report", r.Name)
+			continue
+		}
+		uuid := r.UUID
+		remove("report", r.Name, func(s Services, _ *State) error {
+			_, err := s.Reports.Delete("/v1/api/reports/definitions/" + url.PathEscape(uuid))
+			return err
+		})
+	}
+
 	if len(errs) > 0 {
 		return p, errors.New(strings.Join(errs, "\n"))
 	}
-	// Removals in reverse dependency order: alerts and pages before what they show.
-	order := map[string]int{"alert": 0, "status page": 1, "heartbeat": 2, "monitor": 3}
+	// Removals in reverse dependency order: alerts, reports and pages before what they show.
+	order := map[string]int{"alert": 0, "report": 0, "status page": 1, "heartbeat": 2, "monitor": 3}
 	sort.SliceStable(p.Changes, func(i, j int) bool {
 		a, b := p.Changes[i], p.Changes[j]
 		if a.step != b.step {
@@ -315,6 +369,15 @@ func findPage(st *State, name string) *livePage {
 	for i := range st.StatusPages {
 		if strings.EqualFold(st.StatusPages[i].Name, name) {
 			return &st.StatusPages[i]
+		}
+	}
+	return nil
+}
+
+func findReport(st *State, name string) *liveReport {
+	for i := range st.Reports {
+		if strings.EqualFold(st.Reports[i].Name, name) {
+			return &st.Reports[i]
 		}
 	}
 	return nil
@@ -381,7 +444,7 @@ func Apply(s Services, f *File, st *State, p *Plan, opt Options, done func(Chang
 // Export writes the live workspace as a file. Defaults are left out, so the
 // file reads like one written by hand.
 func Export(st *State) *File {
-	f := &File{Version: Version, Monitors: []Monitor{}, Heartbeats: []Heartbeat{}, StatusPages: []StatusPage{}, Alerts: []Alert{}}
+	f := &File{Version: Version, Monitors: []Monitor{}, Heartbeats: []Heartbeat{}, StatusPages: []StatusPage{}, Alerts: []Alert{}, Reports: []Report{}}
 	all := st.allRegionNames()
 	for _, live := range st.Monitors {
 		t := typeName(live.TypeID)
@@ -421,6 +484,9 @@ func Export(st *State) *File {
 		if w.Alert != nil {
 			f.Alerts = append(f.Alerts, exportAlert(w, st))
 		}
+	}
+	for _, r := range st.Reports {
+		f.Reports = append(f.Reports, exportReport(r, st))
 	}
 	return f
 }

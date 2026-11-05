@@ -16,14 +16,15 @@ import (
 // would change, apply makes the changes. See internal/workspace.
 
 func newServices() workspace.Services {
-	return workspace.Services{API: newClient(), Workflows: newIncidentsClient(), Heartbeats: newHeartbeatsClient()}
+	return workspace.Services{API: newClient(), Workflows: newIncidentsClient(), Heartbeats: newHeartbeatsClient(), Reports: newReportsClient()}
 }
 
 var exportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Write the workspace (monitors, cron jobs, status pages, alerts) as a file",
+	Short: "Write the workspace (monitors, cron jobs, status pages, alerts, reports) as a file",
 	Long: `Write the workspace as a YAML file that plan and apply read: monitors,
-heartbeats (cron jobs), status pages and alerts, by name, defaults left out.
+heartbeats (cron jobs), status pages, alerts and reports, by name, defaults
+left out.
 
 Agent-managed monitors and workflows built in the workflow editor aren't
 written: they're changed where they were made.
@@ -56,8 +57,8 @@ Examples:
 		if err := os.WriteFile(file, data, 0644); err != nil {
 			exitErr(fmt.Errorf("write file: %w", err))
 		}
-		fmt.Printf("Exported %s to %s: %d monitors, %d heartbeats, %d status pages, %d alerts\n",
-			st.Workspace, file, len(f.Monitors), len(f.Heartbeats), len(f.StatusPages), len(f.Alerts))
+		fmt.Printf("Exported %s to %s: %d monitors, %d heartbeats, %d status pages, %d alerts, %d reports\n",
+			st.Workspace, file, len(f.Monitors), len(f.Heartbeats), len(f.StatusPages), len(f.Alerts), len(f.Reports))
 	},
 }
 
@@ -123,8 +124,9 @@ var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Make the workspace match a workspace file",
 	Long: `Make the changes plan shows: add and change monitors, heartbeats,
-status pages and alerts so they match the file. Things the file doesn't
-have are kept unless --prune is given.
+status pages, alerts and reports so they match the file. Things the file
+doesn't have are kept unless --prune is given (the default report is always
+kept).
 
 Shows the plan and asks first; --yes applies without asking (needed when
 there's no terminal, e.g. in CI or from an agent). It stops at the first
@@ -188,7 +190,7 @@ func init() {
 	exportCmd.Flags().StringP("file", "f", "", "Output file path (default: stdout)")
 	for _, c := range []*cobra.Command{planCmd, applyCmd} {
 		c.Flags().StringP("file", "f", "uptimy.yaml", "Workspace file, - for stdin")
-		c.Flags().Bool("prune", false, "Remove what the file doesn't have (monitors, heartbeats, status pages, alerts)")
+		c.Flags().Bool("prune", false, "Remove what the file doesn't have (monitors, heartbeats, status pages, alerts, reports)")
 	}
 	applyCmd.Flags().BoolP("yes", "y", false, "Apply without asking")
 

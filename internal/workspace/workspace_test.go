@@ -95,7 +95,25 @@ func services() (Services, *fake, *fake, *fake) {
 			{"uuid":"wf-old","name":"Old API alert","enabled":false,"alert":{"destination":{"type":"webhook","url":"https://hooks.acme.test/old"},"events":["opened","resolved"],"tagIds":[],"severities":[],"sourceUuids":["0a1b2c3d-0000-4000-8000-000000000001"]}}]}`,
 		"GET /v1/api/integrations/": `{"results":[{"uuid":"int-1","provider":"slack","name":"Acme","config":{"channelName":"ops"}},{"uuid":"int-2","provider":"github","name":"acme/app","config":{}}]}`,
 	}}
-	return Services{API: api, Workflows: workflows, Heartbeats: heartbeats}, api, heartbeats, workflows
+	reports := &fake{responses: map[string]string{
+		"GET /v1/api/reports/definitions": `{"results":[
+			{"uuid":"rd-all","name":"All monitors","isDefault":true,"scopeType":"workspace","monitorUuids":null,"tagIds":null,"slaTarget":99.9,"latencyThresholdMs":null,
+			 "cadence":"weekly","sendDay":1,"sendHour":9,"sendMinute":0,"sendTimezone":"Europe/Sarajevo","emailEnabled":true,"brandName":null,"brandLogoUrl":null,"brandColor":null,"recipients":["ops@acme.test"]},
+			{"uuid":"rd-globex","name":"Globex","isDefault":false,"scopeType":"monitors","monitorUuids":["app-web","hb-backup"],"tagIds":null,"slaTarget":99.5,"latencyThresholdMs":800,
+			 "cadence":"monthly","sendDay":2,"sendHour":8,"sendMinute":30,"sendTimezone":"Europe/Sarajevo","emailEnabled":true,"brandName":"Globex","brandLogoUrl":"https://cdn.acme.test/globex.png","brandColor":"#0055ff","recipients":["cto@globex.test"]},
+			{"uuid":"rd-prod","name":"Prod","isDefault":false,"scopeType":"tags","monitorUuids":null,"tagIds":[7],"slaTarget":99.9,"latencyThresholdMs":null,
+			 "cadence":"none","sendDay":1,"sendHour":9,"sendMinute":0,"sendTimezone":"UTC","emailEnabled":true,"brandName":null,"brandLogoUrl":null,"brandColor":null,"recipients":[]}]}`,
+	}}
+	return Services{API: api, Workflows: workflows, Heartbeats: heartbeats, Reports: reports}, api, heartbeats, workflows
+}
+
+func reportNamed(f *File, name string) *Report {
+	for i := range f.Reports {
+		if f.Reports[i].Name == name {
+			return &f.Reports[i]
+		}
+	}
+	panic("no report " + name)
 }
 
 func roundTrip(t *testing.T) (*File, *State, Services, *fake, *fake, *fake) {
@@ -352,5 +370,121 @@ func TestAlertKeepsADeletedMonitorsScope(t *testing.T) {
 	old.Monitors = []string{"Nope"}
 	if _, err := alertBody(old, st); err == nil {
 		t.Error("a name that isn't a monitor must still fail")
+	}
+}
+
+func TestReportsExportLikeAHandWrittenFile(t *testing.T) {
+	f, _, _, _, _, _ := roundTrip(t)
+	if len(f.Reports) != 3 {
+		t.Fatalf("reports = %d, want 3", len(f.Reports))
+	}
+	// Emailed, so monthly is the default: weekly is written. The timezone is the default's.
+	if all := *reportNamed(f, "All monitors"); all.Schedule != "weekly" || all.Weekday != "" || all.Timezone != "" || all.SLA != 0 || all.Monitors != nil {
+		t.Errorf("default = %+v", all)
+	}
+	g := *reportNamed(f, "Globex")
+	if strings.Join(g.Monitors, ",") != "Website,Nightly backup" || g.SLA != 99.5 || g.SlowAboveMs != 800 || g.Schedule != "" || g.DayOfMonth != 2 || g.At != "08:30" {
+		t.Errorf("globex = %+v", g)
+	}
+	if g.Brand == nil || g.Brand.Name != "Globex" || g.Brand.Color != "#0055ff" {
+		t.Errorf("brand = %+v", g.Brand)
+	}
+	// Nobody emailed: read on demand is the default.
+	if p := *reportNamed(f, "Prod"); strings.Join(p.Tags, ",") != "prod" || p.Schedule != "" || p.Timezone != "UTC" || p.Emails != nil {
+		t.Errorf("prod = %+v", p)
+	}
+}
+
+func TestReportsPlanAndApply(t *testing.T) {
+	f, st, s, _, _, _ := roundTrip(t)
+	g := reportNamed(f, "Globex")
+	g.SLA = 99.95
+	g.Emails = append(g.Emails, "ceo@globex.test")
+	f.Reports = append(f.Reports, Report{Name: "Initech", Tags: []string{"initech"}, Emails: []string{"it@initech.test"}})
+	// Neither the default nor Prod is in the file.
+	f.Reports = []Report{f.Reports[1], f.Reports[3]}
+
+	p, err := MakePlan(f, st, Options{Prune: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, c := range p.Changes {
+		got = append(got, c.String())
+	}
+	want := []string{
+		`+ tag "initech"`,
+		`~ report "Globex": SLA 99.5% → 99.95%; emails +ceo@globex.test`,
+		`+ report "Initech": tags initech, SLA 99.9%, monthly on day 1 at 09:00 (Europe/Sarajevo)`,
+		`- report "Prod"`,
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("changes:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if strings.Join(p.NotInFile, ",") != "report All monitors" {
+		t.Errorf("the default report is kept: notInFile = %v", p.NotInFile)
+	}
+
+	// After the tag is created, the workspace lists it.
+	s.API.(*fake).onWrite = func(f *fake, key string) {
+		if key == "POST /v1/api/tags/" {
+			f.responses["GET /v1/api/tags/"] = `{"results":[{"id":7,"name":"prod"},{"id":8,"name":"initech"}]}`
+		}
+	}
+	if err := Apply(s, f, st, p, Options{Prune: true}, func(Change) {}); err != nil {
+		t.Fatal(err)
+	}
+	rep := s.Reports.(*fake)
+	if strings.Join(rep.writes, ",") != "PUT /v1/api/reports/definitions/rd-globex,POST /v1/api/reports/definitions,DELETE /v1/api/reports/definitions/rd-prod" {
+		t.Errorf("report writes = %v", rep.writes)
+	}
+	// The whole report goes back; the logo uploaded in the app stays.
+	b := rep.bodies["PUT /v1/api/reports/definitions/rd-globex"].(map[string]any)
+	if b["brandLogoUrl"] != "https://cdn.acme.test/globex.png" || b["sendDay"] != float64(2) || b["sendHour"] != float64(8) || b["latencyThresholdMs"] != float64(800) ||
+		strings.Join([]string{b["monitorUuids"].([]any)[0].(string), b["monitorUuids"].([]any)[1].(string)}, ",") != "app-web,hb-backup" {
+		t.Errorf("update body = %v", b)
+	}
+	n := rep.bodies["POST /v1/api/reports/definitions"].(map[string]any)
+	if n["scopeType"] != "tags" || n["tagIds"].([]any)[0] != float64(8) || n["cadence"] != "monthly" || n["sendTimezone"] != "Europe/Sarajevo" || n["brandLogoUrl"] != nil {
+		t.Errorf("create body = %v", n)
+	}
+}
+
+func TestReportsRefuseWhatTheyCantDo(t *testing.T) {
+	f, st, _, _, _, _ := roundTrip(t)
+	reportNamed(f, "All monitors").Monitors = []string{"Website"}
+	reportNamed(f, "Globex").Monitors = []string{"Website", "Nope"}
+	if _, err := MakePlan(f, st, Options{}); err == nil || !strings.Contains(err.Error(), "default report covers every monitor") || !strings.Contains(err.Error(), "no monitor or heartbeat named Nope") {
+		t.Errorf("err = %v", err)
+	}
+
+	_, err := Parse([]byte(`version: 2
+reports:
+  - name: A
+    monitors: [Website]
+    tags: [prod]
+    schedule: monthly
+    weekday: friday
+    at: 9am
+    brand: { color: blue }
+  - name: a
+    schedule: daily
+`))
+	for _, want := range []string{"monitors or tags, not both", "weekday is for a weekly schedule", `at "9am"`, `brand.color "blue"`, `schedule "daily"`, `two reports are named "a"`} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q missing from:\n%v", want, err)
+		}
+	}
+}
+
+func TestAFileWithoutReportsLeavesThemAlone(t *testing.T) {
+	f, st, _, _, _, _ := roundTrip(t)
+	f.Reports = nil
+	p, err := MakePlan(f, st, Options{Prune: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Changes) != 0 || len(p.NotInFile) != 0 {
+		t.Errorf("changes = %v, notInFile = %v", p.Changes, p.NotInFile)
 	}
 }

@@ -275,7 +275,7 @@ uptimyctl schedulers get <uuid>
 ### Workspace as a file (export / plan / apply)
 
 ```bash
-uptimyctl export -f uptimy.yaml                  # monitors, heartbeats, status pages, alerts
+uptimyctl export -f uptimy.yaml                  # monitors, heartbeats, status pages, alerts, reports
 uptimyctl plan -f uptimy.yaml                    # what applying it would change
 uptimyctl apply -f uptimy.yaml                   # show the plan, ask, apply
 uptimyctl apply -f uptimy.yaml --yes --prune     # no question; also remove what the file lacks

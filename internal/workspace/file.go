@@ -1,5 +1,6 @@
 // Package workspace keeps a whole Uptimy workspace in one file: monitors,
-// cron monitors (heartbeats), status pages and alerts, matched by name.
+// cron monitors (heartbeats), status pages, alerts and reports, matched by
+// name.
 // export writes the file from the live workspace, plan shows what applying
 // it would change, apply makes those changes. Each service keeps its own
 // data; this package only calls their /v1/api/* routes.
@@ -14,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -28,6 +30,8 @@ type File struct {
 	Heartbeats  []Heartbeat  `yaml:"heartbeats,omitempty" json:"heartbeats,omitempty"`
 	StatusPages []StatusPage `yaml:"statusPages,omitempty" json:"statusPages,omitempty"`
 	Alerts      []Alert      `yaml:"alerts,omitempty" json:"alerts,omitempty"`
+	// Left out, reports are left as they are, even with --prune.
+	Reports []Report `yaml:"reports,omitempty" json:"reports,omitempty"`
 }
 
 // Monitor is a website/API check. The simple types take a target; any type
@@ -115,6 +119,45 @@ type AlertTo struct {
 	Emails      []string `yaml:"emails,omitempty" json:"emails,omitempty"`
 	Webhook     string   `yaml:"webhook,omitempty" json:"webhook,omitempty"`
 }
+
+// Report is an uptime report: availability against an SLA target, read any
+// time and, with emails, sent on a schedule. More than the default report
+// ("All monitors", every monitor), and anything but weekly, need Growth and
+// above.
+type Report struct {
+	Name string `yaml:"name" json:"name"`
+	// Monitor and cron monitor names, or tags; neither: every monitor.
+	Monitors []string `yaml:"monitors,omitempty" json:"monitors,omitempty"`
+	Tags     []string `yaml:"tags,omitempty" json:"tags,omitempty"`
+	// Percent. Default 99.9.
+	SLA float64 `yaml:"sla,omitempty" json:"sla,omitempty"`
+	// Days with a p95 above this many ms count as slow (shown, never downtime).
+	SlowAboveMs int `yaml:"slowAboveMs,omitempty" json:"slowAboveMs,omitempty"`
+	// weekly, monthly, quarterly or none. Default monthly with emails, none
+	// (read on demand) without.
+	Schedule string `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+	// Weekly: monday … sunday. Default monday.
+	Weekday string `yaml:"weekday,omitempty" json:"weekday,omitempty"`
+	// Monthly and quarterly: 1-28. Default 1.
+	DayOfMonth int `yaml:"dayOfMonth,omitempty" json:"dayOfMonth,omitempty"`
+	// HH:MM. Default 09:00.
+	At string `yaml:"at,omitempty" json:"at,omitempty"`
+	// Default: the default report's (the workspace's).
+	Timezone string   `yaml:"timezone,omitempty" json:"timezone,omitempty"`
+	Emails   []string `yaml:"emails,omitempty" json:"emails,omitempty"`
+	// Not emailed; the schedule and emails are kept.
+	Paused bool `yaml:"paused,omitempty" json:"paused,omitempty"`
+	// A logo is uploaded in the app and kept.
+	Brand *ReportBrand `yaml:"brand,omitempty" json:"brand,omitempty"`
+}
+
+type ReportBrand struct {
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	// #rrggbb
+	Color string `yaml:"color,omitempty" json:"color,omitempty"`
+}
+
+var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 // Load reads a file in YAML (or JSON, which is YAML too). "-" reads stdin.
 func Load(path string) (*File, error) {
@@ -219,6 +262,13 @@ func (f *File) validate() error {
 		}
 	}
 	unique("alert", names)
+
+	names = names[:0]
+	for _, r := range f.Reports {
+		names = append(names, r.Name)
+		errs = append(errs, validateReport(r)...)
+	}
+	unique("report", names)
 
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "\n"))
