@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and help
+    url: https://www.upti.my/discord
+    about: "Ask in the Uptimy Discord, in the #help forum. Bugs and feature requests go above."
+  - name: Report a security vulnerability
+    url: https://github.com/uptimy/uptimyctl/security/advisories/new
+    about: Please report security issues privately, not as a public issue.
+  - name: Uptimy account or billing
+    url: mailto:support@upti.my
+    about: Questions about your Uptimy account, plan or billing.

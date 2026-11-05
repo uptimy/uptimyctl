@@ -1,58 +1,63 @@
 # Contributing to uptimyctl
 
-Thank you for your interest in contributing! This guide helps you get started.
+Thanks for helping. Bug reports, fixes and new commands are all welcome. This page covers how to get set up, how the code is laid out, and what a good command looks like.
 
-## Getting Started
+For anything bigger than a fix (a new command, a change in behavior or in the workspace file format), please [open an issue](https://github.com/uptimy/uptimyctl/issues/new/choose) first so we can agree on the approach before you spend time on it.
 
-1. **Fork** the repository
-2. **Clone** your fork locally
-3. **Create a branch** for your feature or fix
-4. **Make changes**, ensuring tests pass
-5. **Submit a pull request**
+## Setting up
 
-## Development Setup
+You need Go 1.25+.
 
 ```bash
-# Clone and enter the project
-git clone https://github.com/<your-fork>/uptimyctl.git
-cd uptimyctl
-
-# Install dependencies
-go mod download
-
-# Run tests
-make test
-
-# Build
+git clone https://github.com/uptimy/uptimyctl && cd uptimyctl
 make build
+./bin/uptimyctl auth login
 ```
 
-## Code Standards
+`auth login` opens your browser to approve a key for one of your Uptimy workspaces. Commands that change things change that workspace, so try them on one you don't mind changing.
 
-- Run `go vet ./...` and `golangci-lint run` before submitting
-- Write tests for new functionality
-- Follow existing code patterns and naming conventions
-- Use meaningful commit messages
+| Command | What it does |
+| --- | --- |
+| `make test` | Tests with the race detector |
+| `make lint` | [golangci-lint](https://golangci-lint.run/welcome/install/), the same as CI |
+| `make build` | A binary in `bin/` |
+| `make fmt` | `go fmt` |
 
-## Pull Request Guidelines
+## How the code is laid out
 
-- Keep PRs focused on a single change
-- Include tests for new features or bug fixes
-- Update documentation if applicable
-- Reference any related issues
+```
+main.go                entrypoint
+cmd/                   the commands (cobra), one file per resource: healthchecks.go, incidents.go, reports.go, ...
+cmd/workspace_file.go  export, plan and apply
+internal/workspace/    the workspace file: its format, reading the live workspace, the plan and applying it
+internal/client/       HTTP client for Uptimy's API
+internal/output/       tables and -o json
+internal/config/       ~/.config/uptimyctl/config.yaml, environment variables and flags
+internal/selfupdate/   uptimyctl update
+internal/updatecheck/  the "newer release" notice
+```
 
-## Reporting Issues
+Each command calls Uptimy's `/v1/api/*` routes with the workspace's API key. Most live on `api.upti.my` (`newClient()`); incidents and maintenances on `workflows.upti.my` (`newIncidentsClient()`), heartbeats on `heartbeats.upti.my` (`newHeartbeatsClient()`) and reports on `reports.upti.my` (`newReportsClient()`).
 
-- Use the GitHub issue tracker
-- Include steps to reproduce
-- Include Go version, OS, and relevant configuration
+## Adding a command
 
-## Code of Conduct
+Commands live in the file for their resource and register themselves in `init()`; see `cmd/tags.go` for a small one. A good command:
 
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
-All participants are expected to uphold this code.
+- prints a table by default and the API's JSON with `-o json` (`output.IsJSON()`), so scripts and agents can rely on it
+- says what went wrong in a sentence someone can act on (`exitErr`), and accepts names wherever people would rather not copy a UUID
+- has a `Long` help text with an example, since `--help` is the reference
 
-## License
+Tests sit next to the code (`cmd/*_test.go`, `internal/workspace/workspace_test.go`); the workspace file's tests run plan and apply against a fake API.
 
-By contributing, you agree that your contributions will be licensed
-under the Apache License 2.0.
+**Changing the workspace file** (`internal/workspace`): `export` then `plan` against the same workspace must show no changes, and a file written by an older version must still apply without removing anything it doesn't mention. The format is documented in [AGENTS.md](AGENTS.md#the-workspace-as-a-file); update it with the code.
+
+**Document it**: the README's command list, and AGENTS.md if agents should know about it.
+
+## Pull requests
+
+- Keep a PR to one change, with tests. `make lint` and `make test` should pass; CI runs both and builds for Linux and macOS.
+- Describe what changes for people using uptimyctl, not only the code.
+- Match the code around you: comments explain *why*, errors are sentences a user can act on, and nothing prints or logs an API key.
+- By contributing you agree your work is licensed under the [Apache 2.0 license](LICENSE).
+
+Found a security issue? Please don't open an issue; see [SECURITY.md](SECURITY.md).
