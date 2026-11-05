@@ -28,10 +28,54 @@ This repository is a Go CLI for managing upti.my workspaces.
 ```bash
 UPTIMYCTL_API_KEY=upt_... uptimyctl applications list -o json
 UPTIMYCTL_API_KEY=upt_... uptimyctl healthchecks pause <uuid> -o json
-UPTIMYCTL_API_KEY=upt_... uptimyctl export -f monitoring.json
+UPTIMYCTL_API_KEY=upt_... uptimyctl export -f uptimy.yaml
 ```
 
-## Configuring Monitoring End-to-End
+## The Workspace as a File
+
+The way to set up a whole workspace: keep it in `uptimy.yaml` in the repo,
+change the file, show the plan, apply it. Monitors, heartbeats, status pages
+and alerts are matched by name.
+
+```bash
+uptimyctl export -f uptimy.yaml                    # Start from the live workspace
+# ... edit uptimy.yaml ...
+uptimyctl plan -f uptimy.yaml                      # Show the changes; ask the user before applying
+uptimyctl apply -f uptimy.yaml --yes -o json       # --yes: there's no terminal to ask in
+```
+
+```yaml
+version: 2
+monitors:
+  - name: Website
+    target: https://acme.com                       # http by default; also ssl, tcp, ping, dns
+    tags: [prod]
+  - name: acme.com SSL
+    type: ssl
+    target: acme.com
+heartbeats:
+  - name: Nightly backup
+    cron: "0 2 * * *"
+    timezone: Europe/Berlin
+statusPages:
+  - name: Acme Status
+    public: true
+    groups:
+      - name: Services
+        monitors: [Website, Nightly backup]
+alerts:
+  - name: Prod to #ops
+    to: { integration: slack }                     # a connected integration; or emails: [...], webhook: https://...
+    tags: [prod]
+```
+
+Defaults are left out: every region the plan allows, every 60s (ssl hourly),
+30s timeout, opened and resolved incidents. Things not in the file are kept
+unless `--prune` is given; agent-managed monitors and workflows made in the
+workflow editor are never touched. Integrations (Slack and the like) are
+connected in the app.
+
+## Configuring Monitoring Command by Command
 
 A typical agent flow to set up and verify monitoring:
 

@@ -272,14 +272,18 @@ uptimyctl regions list                           # alias
 uptimyctl schedulers get <uuid>
 ```
 
-### Export / Import
+### Workspace as a file (export / plan / apply)
 
 ```bash
-uptimyctl export                                 # print config to stdout
-uptimyctl export -f config.json                  # save to file
-uptimyctl import config.json                     # import from file
-cat config.json | uptimyctl import -             # import from stdin
+uptimyctl export -f uptimy.yaml                  # monitors, heartbeats, status pages, alerts
+uptimyctl plan -f uptimy.yaml                    # what applying it would change
+uptimyctl apply -f uptimy.yaml                   # show the plan, ask, apply
+uptimyctl apply -f uptimy.yaml --yes --prune     # no question; also remove what the file lacks
 ```
+
+Matched by name. Things not in the file are kept unless `--prune` is given.
+Agent-managed monitors and workflows made in the workflow editor are never
+exported or changed. The file format is in [AGENTS.md](AGENTS.md#the-workspace-as-a-file).
 
 ### Version
 
@@ -310,9 +314,9 @@ UPTIMYCTL_API_KEY=upt_abc123... uptimyctl applications list -o json
 UPTIMYCTL_API_KEY=upt_abc123... uptimyctl healthchecks pause <uuid> -o json
 UPTIMYCTL_API_KEY=upt_abc123... uptimyctl healthchecks resume <uuid> -o json
 
-# Export and import workspace configuration
-UPTIMYCTL_API_KEY=upt_prod... uptimyctl export -f monitoring.json -o json
-UPTIMYCTL_API_KEY=upt_staging... uptimyctl import monitoring.json -o json
+# Copy a workspace's setup to another one
+UPTIMYCTL_API_KEY=upt_prod... uptimyctl export -f uptimy.yaml
+UPTIMYCTL_API_KEY=upt_staging... uptimyctl apply -f uptimy.yaml --yes -o json
 
 # Inspect auth or version as JSON
 uptimyctl auth status -o json
