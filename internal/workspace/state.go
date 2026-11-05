@@ -256,9 +256,10 @@ func Fetch(s Services) (*State, error) {
 		return nil, err
 	}
 	for _, h := range heartbeats.Results {
-		if h.Source == "" || h.Source == "cloud" {
+		switch h.Source {
+		case "", "cloud":
 			st.Heartbeats = append(st.Heartbeats, h)
-		} else if h.Source == "agent" {
+		case "agent":
 			st.agentHeartbeats = append(st.agentHeartbeats, h)
 		}
 	}
@@ -362,7 +363,7 @@ func (st *State) regionByName(name string) (region, bool) {
 
 func plainRegion(name string) string {
 	return strings.ToLower(strings.TrimLeftFunc(name, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+		return (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9')
 	}))
 }
 
