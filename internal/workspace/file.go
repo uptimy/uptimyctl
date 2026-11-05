@@ -65,7 +65,7 @@ type Heartbeat struct {
 	NoSchedule bool   `yaml:"noSchedule,omitempty" json:"noSchedule,omitempty"`
 	// Seconds; a no-schedule run with steps fails after this. 0: no limit.
 	MaxRun int `yaml:"maxRun,omitempty" json:"maxRun,omitempty"`
-	// Seconds a run may be late. Default 300.
+	// Seconds a run may be late. Default 300 (0 with no schedule).
 	Grace int `yaml:"grace,omitempty" json:"grace,omitempty"`
 	// Default 1 each.
 	FailureThreshold  int `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty"`

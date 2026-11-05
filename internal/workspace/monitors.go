@@ -175,7 +175,11 @@ type monitorWant struct {
 	regions  []region
 }
 
-func resolveMonitor(m Monitor, st *State) (monitorWant, error) {
+// resolveMonitor fills in a file monitor's defaults. live is the monitor of
+// the same name in the workspace (nil: none yet): it may keep regions the
+// plan no longer offers (a retired region, another workspace's checker),
+// while a new region must be one the plan allows.
+func resolveMonitor(m Monitor, st *State, live *liveMonitor) (monitorWant, error) {
 	w := monitorWant{Monitor: m, typeID: typeIDs[monitorType(m)]}
 	cfg, err := desiredConfig(m)
 	if err != nil {
@@ -197,6 +201,9 @@ func resolveMonitor(m Monitor, st *State) (monitorWant, error) {
 	} else {
 		for _, name := range m.Regions {
 			r, ok := st.regionByName(name)
+			if !ok && live != nil {
+				r, ok = live.region(name)
+			}
 			if !ok {
 				return w, fmt.Errorf("no region %q; the plan allows: %s", name, strings.Join(st.allRegionNames(), ", "))
 			}
@@ -207,6 +214,16 @@ func resolveMonitor(m Monitor, st *State) (monitorWant, error) {
 		return w, errors.New("the workspace has no regions to check from")
 	}
 	return w, nil
+}
+
+// region finds one of the monitor's current regions by name or UUID.
+func (m liveMonitor) region(name string) (region, bool) {
+	for _, s := range m.Schedulers {
+		if s.UUID == name || plainRegion(s.Name) == plainRegion(name) {
+			return region{UUID: s.UUID, Name: s.Name, raw: map[string]any{"uuid": s.UUID, "name": s.Name}}, true
+		}
+	}
+	return region{}, false
 }
 
 func (w monitorWant) regionNames() []string {

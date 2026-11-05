@@ -98,12 +98,12 @@ func MakePlan(f *File, st *State, opt Options) (*Plan, error) {
 	inFile := map[string]bool{}
 	for _, m := range f.Monitors {
 		inFile[strings.ToLower(m.Name)] = true
-		w, err := resolveMonitor(m, st)
+		live := findMonitor(st, m.Name)
+		w, err := resolveMonitor(m, st, live)
 		if err != nil {
 			fail("monitor", m.Name, err)
 			continue
 		}
-		live := findMonitor(st, m.Name)
 		if live == nil {
 			p.Changes = append(p.Changes, Change{Action: "add", Kind: "monitor", Name: m.Name, Details: []string{w.describe()}, step: 1,
 				run: func(s Services, st *State) error { return createMonitor(s, st, w) }})

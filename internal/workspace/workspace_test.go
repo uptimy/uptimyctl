@@ -66,7 +66,7 @@ func services() (Services, *fake, *fake, *fake) {
 			{"uuid":"hc-web","applicationUuid":"app-web","healthcheckTypeId":1,"config":` + httpConfig + `,"intervalSeconds":60,"timeoutSeconds":30,"active":true,"managedByLocationUuid":null,
 			 "application":{"uuid":"app-web","name":"Website"},"schedulers":[{"uuid":"s-fra","name":"🇩🇪 Frankfurt"},{"uuid":"s-sin","name":"🇸🇬 Singapore"}],"tags":[{"id":7,"name":"prod"}]},
 			{"uuid":"hc-ssl","applicationUuid":"app-ssl","healthcheckTypeId":6,"config":{"host":"acme.test","port":443,"expiryWarningDays":30},"intervalSeconds":3600,"timeoutSeconds":60,"active":true,
-			 "application":{"uuid":"app-ssl","name":"acme.test SSL"},"schedulers":[{"uuid":"s-fra","name":"🇩🇪 Frankfurt"}],"tags":[]},
+			 "application":{"uuid":"app-ssl","name":"acme.test SSL"},"schedulers":[{"uuid":"s-fra","name":"🇩🇪 Frankfurt"},{"uuid":"s-bom","name":"🇮🇳 Mumbai"}],"tags":[]},
 			{"uuid":"hc-api","applicationUuid":"app-api","healthcheckTypeId":1,"config":{"method":"GET","uri":"https://api.acme.test","expectedStatusCode":401,"body":{},"headers":{"Authorization":"Bearer x"},"expectedResponseBody":{},"proxyUrl":""},
 			 "intervalSeconds":60,"timeoutSeconds":30,"active":false,"application":{"uuid":"app-api","name":"API"},"schedulers":[{"uuid":"s-fra","name":"🇩🇪 Frankfurt"},{"uuid":"s-sin","name":"🇸🇬 Singapore"}],"tags":[]},
 			{"uuid":"hc-agent","applicationUuid":"app-agent","healthcheckTypeId":1,"config":{"uri":"http://db:5432"},"intervalSeconds":60,"timeoutSeconds":10,"active":true,"managedByLocationUuid":"loc-1",
@@ -85,6 +85,7 @@ func services() (Services, *fake, *fake, *fake) {
 			{"uuid":"hb-backup","name":"Nightly backup","intervalSeconds":0,"cron":"0 2 * * *","timezone":"Europe/Sarajevo","noSchedule":false,"maxRunSeconds":0,"graceSeconds":600,"failureThreshold":1,"recoveryThreshold":1,"enforceOrder":true,"steps":[],"tagIds":[7],"source":"cloud"},
 			{"uuid":"hb-worker","name":"Worker","intervalSeconds":300,"noSchedule":false,"maxRunSeconds":0,"graceSeconds":300,"failureThreshold":1,"recoveryThreshold":1,"enforceOrder":true,"pausedAt":"2026-11-01T00:00:00Z",
 			 "steps":[{"uuid":"st-1","key":"start","name":"Start","position":0,"required":true}],"tagIds":[],"source":"cloud"},
+			{"uuid":"hb-manual","name":"Manual run","intervalSeconds":0,"noSchedule":true,"maxRunSeconds":0,"graceSeconds":0,"failureThreshold":1,"recoveryThreshold":1,"enforceOrder":true,"steps":[],"tagIds":[],"source":"cloud"},
 			{"uuid":"hb-liveness","name":"Uptimy Agent · abc","intervalSeconds":60,"graceSeconds":120,"failureThreshold":1,"recoveryThreshold":1,"enforceOrder":true,"tagIds":[],"source":"agent_liveness"}]}`,
 	}}
 	workflows := &fake{responses: map[string]string{
@@ -123,6 +124,15 @@ func monitorNamed(f *File, name string) *Monitor {
 	panic("no monitor " + name)
 }
 
+func heartbeatNamed(f *File, name string) *Heartbeat {
+	for i := range f.Heartbeats {
+		if f.Heartbeats[i].Name == name {
+			return &f.Heartbeats[i]
+		}
+	}
+	panic("no heartbeat " + name)
+}
+
 func TestExportThenPlanChangesNothing(t *testing.T) {
 	f, st, _, _, _, _ := roundTrip(t)
 	p, err := MakePlan(f, st, Options{Prune: true})
@@ -147,17 +157,22 @@ func TestExportReadsLikeAHandWrittenFile(t *testing.T) {
 	if web.Name != "Website" || web.Target != "https://acme.test" || web.Config != nil || web.Interval != 0 || web.Regions != nil || web.Type != "" {
 		t.Errorf("website = %+v", web)
 	}
-	if ssl.Type != "ssl" || ssl.Target != "acme.test" || ssl.Port != 0 || ssl.Timeout != 60 || len(ssl.Regions) != 1 {
+	// Mumbai isn't a region the plan offers any more, but this monitor still uses it.
+	if ssl.Type != "ssl" || ssl.Target != "acme.test" || ssl.Port != 0 || ssl.Timeout != 60 || strings.Join(ssl.Regions, ",") != "🇩🇪 Frankfurt,🇮🇳 Mumbai" {
 		t.Errorf("ssl = %+v", ssl)
 	}
 	// Headers can't be a target: the config is written as it is.
 	if api.Target != "" || api.Config["headers"] == nil || !api.Paused {
 		t.Errorf("api = %+v", api)
 	}
-	if len(f.Heartbeats) != 2 || f.Heartbeats[0].Cron != "0 2 * * *" || f.Heartbeats[0].Grace != 600 || f.Heartbeats[0].Timezone != "Europe/Sarajevo" {
+	if b := heartbeatNamed(f, "Nightly backup"); len(f.Heartbeats) != 3 || b.Cron != "0 2 * * *" || b.Grace != 600 || b.Timezone != "Europe/Sarajevo" {
 		t.Errorf("heartbeats = %+v", f.Heartbeats)
 	}
-	if steps := f.Heartbeats[1].Steps; len(steps) != 1 || steps[0]["uuid"] != nil {
+	// No schedule, so no grace: nothing to write.
+	if h := heartbeatNamed(f, "Manual run"); !h.NoSchedule || h.Grace != 0 {
+		t.Errorf("no-schedule heartbeat = %+v", h)
+	}
+	if steps := heartbeatNamed(f, "Worker").Steps; len(steps) != 1 || steps[0]["uuid"] != nil {
 		t.Errorf("steps keep no ids: %v", steps)
 	}
 	if g := f.StatusPages[0].Groups[0]; strings.Join(g.Monitors, ",") != "Website,Nightly backup,Postgres" {
@@ -172,7 +187,7 @@ func TestPlanShowsEditsAndKeepsWhatsMissing(t *testing.T) {
 	f, st, _, _, _, _ := roundTrip(t)
 	monitorNamed(f, "Website").Interval = 120
 	f.Monitors = append(f.Monitors, Monitor{Name: "Docs", Target: "docs.acme.test", Tags: []string{"staging"}})
-	f.Heartbeats = f.Heartbeats[:1] // Worker goes
+	f.Heartbeats = f.Heartbeats[:2] // Worker goes
 	f.StatusPages[0].Groups[0].Monitors = append(f.StatusPages[0].Groups[0].Monitors, "Docs")
 	f.Alerts[0].Severities = []string{"critical"}
 
@@ -212,7 +227,7 @@ func TestApplyMakesTheChangesInOrder(t *testing.T) {
 	monitorNamed(f, "Website").Interval = 120
 	f.Monitors = append(f.Monitors, Monitor{Name: "Docs", Target: "docs.acme.test", Tags: []string{"staging"}})
 	f.StatusPages[0].Groups[0].Monitors = append(f.StatusPages[0].Groups[0].Monitors, "Docs")
-	f.Heartbeats[0].Grace = 900
+	heartbeatNamed(f, "Nightly backup").Grace = 900
 	// After the bulk create, the workspace lists Docs too.
 	api.onWrite = func(f *fake, key string) {
 		if key != "POST /v1/api/healthchecks/bulk" {
@@ -266,6 +281,8 @@ func TestApplyMakesTheChangesInOrder(t *testing.T) {
 func TestPlanRefusesWhatItCantDo(t *testing.T) {
 	f, st, _, _, _, _ := roundTrip(t)
 	monitorNamed(f, "Website").Regions = []string{"Mars"}
+	// A region only another monitor still uses can't be given to a new one.
+	f.Monitors = append(f.Monitors, Monitor{Name: "New", Target: "new.acme.test", Regions: []string{"Mumbai"}})
 	monitorNamed(f, "API").Interval = 10
 	f.Alerts = append(f.Alerts, Alert{Name: "default EMAIL alerts", To: AlertTo{Emails: []string{"a@acme.test"}}})
 	f.Alerts = append(f.Alerts, Alert{Name: "Teams", To: AlertTo{Integration: "teams"}})
@@ -275,7 +292,7 @@ func TestPlanRefusesWhatItCantDo(t *testing.T) {
 	if err == nil {
 		t.Fatal("want errors")
 	}
-	for _, want := range []string{`no region "Mars"`, "below the plan's minimum of 30s", "made in the workflow editor", "no integration \"teams\" is connected", "shows Nope"} {
+	for _, want := range []string{`no region "Mars"`, `monitor "New": no region "Mumbai"`, "below the plan's minimum of 30s", "made in the workflow editor", "no integration \"teams\" is connected", "shows Nope"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("%q missing from:\n%v", want, err)
 		}
