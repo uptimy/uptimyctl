@@ -1,6 +1,34 @@
-# uptimyctl
+<p align="center">
+  <a href="https://www.upti.my/?utm_source=github&utm_medium=readme&utm_campaign=uptimyctl">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://www.upti.my/brand/uptimy-logo-white.svg">
+      <img src="https://www.upti.my/brand/uptimy-logo.svg" alt="Uptimy" height="48">
+    </picture>
+  </a>
+</p>
 
-Command-line tool for managing [upti.my](https://upti.my) workspaces via API keys.
+<h3 align="center">uptimyctl</h3>
+
+<p align="center">
+  Uptimy from your terminal.<br>
+  Manage monitors, cron jobs, incidents, status pages, alerts and reports, or keep a whole workspace in one file your agent edits.
+</p>
+
+<p align="center">
+  <a href="https://github.com/uptimy/uptimyctl/releases/latest"><img src="https://img.shields.io/github/v/release/uptimy/uptimyctl" alt="Release"></a>
+  <a href="https://github.com/uptimy/uptimyctl/actions/workflows/ci.yml"><img src="https://github.com/uptimy/uptimyctl/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/uptimy/uptimyctl" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="#installation">Install</a> ·
+  <a href="#workspace-as-a-file-export--plan--apply">Workspace as a file</a> ·
+  <a href="https://www.upti.my/docs/cli">Docs</a>
+</p>
+
+---
+
+The command-line tool for [Uptimy](https://www.upti.my) workspaces, for you, for CI and for coding agents. Every command takes `-o json`; [AGENTS.md](AGENTS.md) is the guide for agents.
 
 ## Installation
 
@@ -329,10 +357,11 @@ Config file location: `~/.config/uptimyctl/config.yaml`
 api_url: https://api.upti.my
 incidents_api_url: https://workflows.upti.my
 heartbeats_api_url: https://heartbeats.upti.my
+reports_api_url: https://reports.upti.my
 api_key: upt_abc123...
 ```
 
-> `incidents` and `maintenances` are served from a separate domain (`incidents_api_url`), and `heartbeats` from another (`heartbeats_api_url`); all other resources use `api_url`.
+> `incidents` and `maintenances` are served from a separate domain (`incidents_api_url`), `heartbeats` from another (`heartbeats_api_url`) and `reports` from a third (`reports_api_url`); all other resources use `api_url`.
 
 Environment variables override the config file:
 
@@ -342,18 +371,25 @@ Environment variables override the config file:
 | `UPTIMYCTL_API_URL` | API base URL |
 | `UPTIMYCTL_INCIDENTS_API_URL` | API base URL for incidents and maintenances |
 | `UPTIMYCTL_HEARTBEATS_API_URL` | API base URL for heartbeats |
+| `UPTIMYCTL_REPORTS_API_URL` | API base URL for uptime reports |
 
-## Development
+## Help & support
+
+- **Questions and setup help:** ask in [Discord](https://www.upti.my/discord), in the **#help** forum. Say which version you run (`uptimyctl version`) and the command you ran.
+- **Bugs and feature requests:** [open an issue](https://github.com/uptimy/uptimyctl/issues/new/choose).
+- **Security issues:** report them privately, see [SECURITY.md](SECURITY.md).
+- **Uptimy account or billing:** [support@upti.my](mailto:support@upti.my).
+
+## Contributing
+
+Bug reports, fixes and new commands are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and how the code is laid out. Report security issues privately ([SECURITY.md](SECURITY.md)).
 
 ```bash
-make fmt          # format code
-make vet          # run go vet
-make lint         # run golangci-lint
-make test         # run tests with race detector
-make coverage     # generate coverage report
-make tidy         # go mod tidy
+make test         # tests with the race detector
+make lint         # golangci-lint, as in CI
+make build        # bin/uptimyctl
 ```
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+[Apache-2.0](LICENSE)
