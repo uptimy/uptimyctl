@@ -50,7 +50,7 @@ func pickIntegration(st *State, want string) (integration, error) {
 // alertBody is what workflows' alert routes take. Monitors and tags may only
 // exist once the earlier steps of apply have run, so this runs then.
 func alertBody(a Alert, st *State) (map[string]any, error) {
-	dest := map[string]any{}
+	var dest map[string]any
 	switch {
 	case a.To.Integration != "":
 		i, err := pickIntegration(st, a.To.Integration)
