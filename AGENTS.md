@@ -48,7 +48,7 @@ uptimyctl apply -f uptimy.yaml --yes -o json       # --yes: there's no terminal 
 version: 2
 monitors:
   - name: Website
-    target: https://acme.com                       # http by default; also ssl, tcp, ping, dns
+    target: https://acme.com                       # http by default; also ssl, tcp, ping, dns, mcp
     tags: [prod]
   - name: acme.com SSL
     type: ssl

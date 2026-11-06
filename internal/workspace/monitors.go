@@ -14,7 +14,7 @@ import (
 )
 
 // Healthcheck type ids (upti.my-api healthcheck_type) by the names the file uses.
-var typeIDs = map[string]int{"http": 1, "grpc": 2, "graphql": 3, "ping": 4, "tcp": 5, "ssl": 6, "dns": 7, "browser": 8}
+var typeIDs = map[string]int{"http": 1, "grpc": 2, "graphql": 3, "ping": 4, "tcp": 5, "ssl": 6, "dns": 7, "browser": 8, "mcp": 13}
 
 func typeName(id int) string {
 	for name, i := range typeIDs {
@@ -38,7 +38,7 @@ func monitorType(m Monitor) string {
 func desiredConfig(m Monitor) (map[string]any, error) {
 	t := monitorType(m)
 	if _, ok := typeIDs[t]; !ok {
-		return nil, fmt.Errorf("unknown type %q: use http, ssl, tcp, ping, dns, grpc, graphql or browser", m.Type)
+		return nil, fmt.Errorf("unknown type %q: use http, ssl, tcp, ping, dns, mcp, grpc, graphql or browser", m.Type)
 	}
 	cfg := map[string]any{}
 	if target := strings.TrimSpace(m.Target); target != "" {
@@ -60,13 +60,17 @@ func desiredConfig(m Monitor) (map[string]any, error) {
 func buildConfig(t string, m Monitor) (map[string]any, error) {
 	target := strings.TrimSpace(m.Target)
 	switch t {
-	case "http":
+	case "http", "mcp":
 		if !strings.Contains(target, "://") {
 			target = "https://" + target
 		}
 		u, err := url.Parse(target)
 		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 			return nil, fmt.Errorf("%q isn't an http(s) URL", m.Target)
+		}
+		if t == "mcp" {
+			// Checked without a key; a key and requiredTools go in config.
+			return map[string]any{"uri": u.String(), "headers": map[string]any{}}, nil
 		}
 		status := m.ExpectedStatus
 		if status == 0 {
@@ -131,6 +135,8 @@ func shorthand(t string, cfg map[string]any) Monitor {
 		if s, ok := cfg["expectedStatusCode"].(float64); ok && s != 200 {
 			m.ExpectedStatus = int(s)
 		}
+	case "mcp":
+		m.Target, _ = cfg["uri"].(string)
 	case "ssl", "tcp", "ping":
 		m.Target, _ = cfg["host"].(string)
 		if p, ok := cfg["port"].(float64); ok && !(t == "ssl" && p == 443) {
