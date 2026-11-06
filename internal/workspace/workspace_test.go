@@ -488,3 +488,18 @@ func TestAFileWithoutReportsLeavesThemAlone(t *testing.T) {
 		t.Errorf("changes = %v, notInFile = %v", p.Changes, p.NotInFile)
 	}
 }
+
+// An MCP server monitor is its URL; with a key or required tools, its config.
+func TestMCPMonitorTarget(t *testing.T) {
+	cfg, err := desiredConfig(Monitor{Type: "mcp", Target: "mcp.acme.test/mcp"})
+	if err != nil || cfg["uri"] != "https://mcp.acme.test/mcp" || len(cfg) != 2 {
+		t.Fatalf("config = %v, %v", cfg, err)
+	}
+	if m := shorthand("mcp", cfg); m.Target != "https://mcp.acme.test/mcp" || m.Config != nil {
+		t.Errorf("plain MCP monitor exports as %+v", m)
+	}
+	keyed := normalized(map[string]any{"uri": "https://mcp.acme.test/mcp", "headers": map[string]any{"Authorization": "Bearer upt_x"}, "requiredTools": []any{"get_status"}}).(map[string]any)
+	if m := shorthand("mcp", keyed); m.Target != "" || m.Config["requiredTools"] == nil {
+		t.Errorf("keyed MCP monitor exports as %+v", m)
+	}
+}

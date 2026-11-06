@@ -39,7 +39,7 @@ type File struct {
 // browser checks must).
 type Monitor struct {
 	Name string `yaml:"name" json:"name"`
-	// http (default), ssl, tcp, ping, dns, grpc, graphql or browser.
+	// http (default), ssl, tcp, ping, dns, mcp, grpc, graphql or browser.
 	Type           string   `yaml:"type,omitempty" json:"type,omitempty"`
 	Target         string   `yaml:"target,omitempty" json:"target,omitempty"`
 	Port           int      `yaml:"port,omitempty" json:"port,omitempty"`
