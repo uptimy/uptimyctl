@@ -46,7 +46,9 @@ type Monitor struct {
 	ExpectedStatus int      `yaml:"expectedStatus,omitempty" json:"expectedStatus,omitempty"`
 	RecordType     string   `yaml:"recordType,omitempty" json:"recordType,omitempty"`
 	ExpectedValues []string `yaml:"expectedValues,omitempty" json:"expectedValues,omitempty"`
-	// Config overrides what the target builds, key by key.
+	// Config overrides what the target builds, key by key. For http it can
+	// also hold assertions (keyword checks), or steps, which replace the
+	// target: the shape the API stores HTTP checks in.
 	Config map[string]any `yaml:"config,omitempty" json:"config,omitempty"`
 	// Seconds. Default 60 (ssl 3600), raised to the plan's minimum.
 	Interval int `yaml:"interval,omitempty" json:"interval,omitempty"`

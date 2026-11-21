@@ -53,6 +53,13 @@ func desiredConfig(m Monitor) (map[string]any, error) {
 	for k, v := range m.Config {
 		cfg[k] = v
 	}
+	if t == "http" {
+		// A config with steps replaces what the target builds.
+		if _, ok := m.Config["steps"]; ok {
+			cfg = map[string]any{"steps": m.Config["steps"], "proxyUrl": m.Config["proxyUrl"]}
+		}
+		return httpCanonical(cfg), nil
+	}
 	out, _ := normalized(cfg).(map[string]any)
 	return out, nil
 }
@@ -131,9 +138,12 @@ func shorthand(t string, cfg map[string]any) Monitor {
 	m := Monitor{Type: t}
 	switch t {
 	case "http":
-		m.Target, _ = cfg["uri"].(string)
-		if s, ok := cfg["expectedStatusCode"].(float64); ok && s != 200 {
-			m.ExpectedStatus = int(s)
+		cfg = httpCanonical(cfg)
+		if target, status, ok := httpTargetOf(cfg); ok {
+			m.Target = target
+			if status != 200 {
+				m.ExpectedStatus = status
+			}
 		}
 	case "mcp":
 		m.Target, _ = cfg["uri"].(string)
@@ -156,7 +166,7 @@ func shorthand(t string, cfg map[string]any) Monitor {
 		}
 	}
 	if m.Target != "" {
-		if built, err := buildConfig(t, m); err == nil && reflect.DeepEqual(normalized(built), normalized(cfg)) {
+		if built, err := desiredConfig(m); err == nil && reflect.DeepEqual(built, normalized(cfg)) {
 			return m
 		}
 	}
@@ -257,8 +267,12 @@ func monitorChanges(w monitorWant, live *liveMonitor, st *State) []string {
 		d = append(d, fmt.Sprintf("type %s → %s", typeName(live.TypeID), monitorType(w.Monitor)))
 	}
 	var keys []string
+	liveConfig := live.Config
+	if w.typeID == typeIDs["http"] && live.TypeID == w.typeID {
+		liveConfig = httpCanonical(liveConfig)
+	}
 	for k, v := range w.config {
-		if !reflect.DeepEqual(normalized(v), normalized(live.Config[k])) {
+		if !reflect.DeepEqual(normalized(v), normalized(liveConfig[k])) {
 			keys = append(keys, k)
 		}
 	}
@@ -325,7 +339,11 @@ func setDiff(label string, have, want []string) string {
 
 func (w monitorWant) healthcheck(live map[string]any) map[string]any {
 	cfg := map[string]any{}
-	// Keys the file doesn't set keep their live values.
+	// Keys the file doesn't set keep their live values. An HTTP check's
+	// steps are one key: the file's replace the live ones whole.
+	if w.typeID == typeIDs["http"] && live != nil {
+		live = httpCanonical(live)
+	}
 	for k, v := range live {
 		cfg[k] = v
 	}
