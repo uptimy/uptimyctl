@@ -54,7 +54,9 @@ func (f *fake) Patch(path string, body interface{}) ([]byte, error) {
 }
 func (f *fake) Delete(path string) ([]byte, error) { return f.write("DELETE", path, nil) }
 
-const httpConfig = `{"method":"GET","uri":"https://acme.test","expectedStatusCode":200,"body":{},"headers":{},"expectedResponseBody":{},"proxyUrl":""}`
+// Website is stored as the API stores HTTP checks now (steps); API is still
+// in the flat shape, as before the API's migration. Both read the same.
+const httpConfig = `{"steps":[{"name":"request","request":{"method":"GET","uri":"https://acme.test"},"assertions":[{"source":"status","op":"eq","value":200}]}]}`
 
 func services() (Services, *fake, *fake, *fake) {
 	api := &fake{responses: map[string]string{
@@ -180,8 +182,8 @@ func TestExportReadsLikeAHandWrittenFile(t *testing.T) {
 	if ssl.Type != "ssl" || ssl.Target != "acme.test" || ssl.Port != 0 || ssl.Timeout != 60 || strings.Join(ssl.Regions, ",") != "🇩🇪 Frankfurt,🇮🇳 Mumbai" {
 		t.Errorf("ssl = %+v", ssl)
 	}
-	// Headers can't be a target: the config is written as it is.
-	if api.Target != "" || api.Config["headers"] == nil || !api.Paused {
+	// Headers can't be a target: the config is written in the stored shape.
+	if api.Target != "" || !api.Paused || !strings.Contains(fmt.Sprint(api.Config["steps"]), "Authorization:Bearer x") {
 		t.Errorf("api = %+v", api)
 	}
 	if b := heartbeatNamed(f, "Nightly backup"); len(f.Heartbeats) != 3 || b.Cron != "0 2 * * *" || b.Grace != 600 || b.Timezone != "Europe/Sarajevo" {
@@ -501,5 +503,76 @@ func TestMCPMonitorTarget(t *testing.T) {
 	keyed := normalized(map[string]any{"uri": "https://mcp.acme.test/mcp", "headers": map[string]any{"Authorization": "Bearer upt_x"}, "requiredTools": []any{"get_status"}}).(map[string]any)
 	if m := shorthand("mcp", keyed); m.Target != "" || m.Config["requiredTools"] == nil {
 		t.Errorf("keyed MCP monitor exports as %+v", m)
+	}
+}
+
+// A file written before HTTP checks were stored as steps (target, and flat
+// overrides in config) plans no changes against the migrated monitor.
+func TestHTTPFileMatchesStepsShape(t *testing.T) {
+	steps := map[string]any{"steps": []any{map[string]any{
+		"name":       "request",
+		"request":    map[string]any{"method": "GET", "uri": "https://api.acme.test", "headers": map[string]any{"Authorization": "Bearer x"}},
+		"assertions": []any{map[string]any{"source": "status", "op": "eq", "value": float64(401)}},
+	}}}
+	m := Monitor{Name: "API", Target: "api.acme.test", ExpectedStatus: 401, Config: map[string]any{"headers": map[string]any{"Authorization": "Bearer x"}}}
+	got, err := desiredConfig(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(got) != fmt.Sprint(normalized(steps)) {
+		t.Errorf("desired = %v\nwant %v", got, normalized(steps))
+	}
+	live := &liveMonitor{TypeID: 1, Config: steps}
+	w := monitorWant{Monitor: m, typeID: 1, config: got}
+	for _, c := range monitorChanges(w, live, nil) {
+		if strings.HasPrefix(c, "config") {
+			t.Errorf("unexpected %s", c)
+		}
+	}
+
+	// Expected body and keyword assertions from the file land in the step.
+	m = Monitor{Name: "Shop", Target: "shop.acme.test", Config: map[string]any{
+		"expectedResponseBody": map[string]any{"status": "ok"},
+		"assertions":           []any{map[string]any{"source": "body", "op": "contains", "value": "Add to cart"}},
+	}}
+	got, _ = desiredConfig(m)
+	want := `[map[op:eq source:status value:200] map[op:contains source:body value:Add to cart] map[op:eq path:status source:json value:ok]]`
+	if a := got["steps"].([]any)[0].(map[string]any)["assertions"]; fmt.Sprint(a) != want {
+		t.Errorf("assertions = %v", a)
+	}
+}
+
+// An update sends the file's steps only: no flat keys left over from the
+// live config for the API to mistake for the check.
+func TestHTTPUpdateSendsStepsOnly(t *testing.T) {
+	live := map[string]any{"proxyUrl": "http://proxy.acme.test:8080", "method": "GET", "uri": "https://old.acme.test", "expectedStatusCode": float64(200)}
+	m := Monitor{Name: "Website", Target: "new.acme.test"}
+	cfg, _ := desiredConfig(m)
+	w := monitorWant{Monitor: m, typeID: 1, config: cfg}
+	sent := w.healthcheck(live)["config"].(map[string]any)
+	if len(sent) != 2 || sent["proxyUrl"] != "http://proxy.acme.test:8080" || !strings.Contains(fmt.Sprint(sent["steps"]), "uri:https://new.acme.test") {
+		t.Errorf("sent config = %v", sent)
+	}
+}
+
+// A file can give the steps itself (a request chain); method and empty
+// fields are written as the API stores them.
+func TestHTTPStepsInFile(t *testing.T) {
+	m := Monitor{Name: "Flow", Config: map[string]any{"steps": []any{
+		map[string]any{"name": "login", "request": map[string]any{"method": "post", "uri": "https://api.acme.test/login", "headers": map[string]any{}},
+			"extract": []any{map[string]any{"var": "token", "source": "json", "path": "access_token"}}},
+		map[string]any{"request": map[string]any{"uri": "https://api.acme.test/orders", "headers": map[string]any{"Authorization": "Bearer {{token}}"}}},
+	}}}
+	got, err := desiredConfig(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := got["steps"].([]any)
+	first, second := steps[0].(map[string]any), steps[1].(map[string]any)
+	if first["request"].(map[string]any)["method"] != "POST" || first["request"].(map[string]any)["headers"] != nil || second["name"] != "step 2" {
+		t.Errorf("steps = %v", steps)
+	}
+	if e := shorthand("http", got); e.Target != "" || e.Config == nil {
+		t.Errorf("a chain is exported as config: %+v", e)
 	}
 }
