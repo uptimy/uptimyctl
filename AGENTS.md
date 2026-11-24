@@ -18,6 +18,7 @@ This repository is a Go CLI for managing upti.my workspaces.
 - `incidents` and `maintenances` use a separate domain (default `https://workflows.upti.my`), overridable via `--incidents-api-url` or `UPTIMYCTL_INCIDENTS_API_URL`
 - `heartbeats` use a separate domain (default `https://heartbeats.upti.my`), overridable via `--heartbeats-api-url` or `UPTIMYCTL_HEARTBEATS_API_URL`
 - `reports` use a separate domain (default `https://reports.upti.my`), overridable via `--reports-api-url` or `UPTIMYCTL_REPORTS_API_URL`
+- check history (`analytics results`, `summary`, `export`, `heartbeats export`) uses a separate domain (default `https://analytics.upti.my`), overridable via `--analytics-api-url` or `UPTIMYCTL_ANALYTICS_API_URL`
 
 ## Machine-Friendly Usage
 

@@ -12,15 +12,18 @@ import (
 var analyticsCmd = &cobra.Command{
 	Use:   "analytics",
 	Short: "Read healthcheck analytics",
-	Long: `Read execution history and rollup analytics for a healthcheck.
+	Long: `Read a healthcheck's history.
 
-All subcommands take a healthcheck UUID and an optional time range.
-When --from/--to are omitted, the last 24 hours are returned.
+results, summary and export read Uptimy's check history (every result, as
+far back as your plan's window). The rollup subcommands read the older
+per-region rollups of the last weeks; without --from/--to they return the
+last 24 hours.
 
 Examples:
-  uptimyctl analytics executions <hc-uuid>
-  uptimyctl analytics hour-region <hc-uuid> --from 2026-07-01T00:00:00Z --to 2026-07-08T00:00:00Z
-  uptimyctl analytics minute-region <hc-uuid> --scheduler <scheduler-uuid> -o json`,
+  uptimyctl analytics results <hc-uuid> --failures --from 7d
+  uptimyctl analytics summary <hc-uuid> --by-region --compare
+  uptimyctl analytics export <hc-uuid> --from 30d --file results.csv
+  uptimyctl analytics hour-region <hc-uuid> --from 2026-07-01T00:00:00Z --to 2026-07-08T00:00:00Z`,
 }
 
 // newAnalyticsCmd builds one subcommand per analytics endpoint; they differ only in path suffix.
@@ -74,7 +77,6 @@ func newAnalyticsCmd(use, short, endpoint string) *cobra.Command {
 }
 
 func init() {
-	analyticsCmd.AddCommand(newAnalyticsCmd("executions", "Individual healthcheck executions", "executions"))
 	analyticsCmd.AddCommand(newAnalyticsCmd("minute-region", "Per-minute rollups by region", "minute-region"))
 	analyticsCmd.AddCommand(newAnalyticsCmd("minute-breakdown", "Per-minute latency breakdown rollups", "minute-breakdown"))
 	analyticsCmd.AddCommand(newAnalyticsCmd("hour-region", "Hourly rollups by region", "hour-region"))

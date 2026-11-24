@@ -14,6 +14,7 @@ const (
 	DefaultHeartbeatsURL   = "https://heartbeats.upti.my"
 	DefaultPingURL         = "https://ping.upti.my"
 	DefaultReportsURL      = "https://reports.upti.my"
+	DefaultAnalyticsURL    = "https://analytics.upti.my"
 	DefaultAppURL          = "https://app.upti.my"
 	ConfigFileName         = ".uptimyctl"
 )
@@ -23,6 +24,7 @@ type Config struct {
 	IncidentsAPIURL string `mapstructure:"incidents_api_url"`
 	HeartbeatsURL   string `mapstructure:"heartbeats_api_url"`
 	ReportsURL      string `mapstructure:"reports_api_url"`
+	AnalyticsURL    string `mapstructure:"analytics_api_url"`
 	APIKey          string `mapstructure:"api_key"`
 }
 
@@ -57,6 +59,7 @@ func Load() *Config {
 	viper.SetDefault("incidents_api_url", DefaultIncidentsAPIURL)
 	viper.SetDefault("heartbeats_api_url", DefaultHeartbeatsURL)
 	viper.SetDefault("reports_api_url", DefaultReportsURL)
+	viper.SetDefault("analytics_api_url", DefaultAnalyticsURL)
 	viper.SetDefault("api_key", "")
 	viper.SetEnvPrefix("UPTIMYCTL")
 	viper.AutomaticEnv()
@@ -76,6 +79,7 @@ func Save(cfg *Config) error {
 	viper.Set("incidents_api_url", cfg.IncidentsAPIURL)
 	viper.Set("heartbeats_api_url", cfg.HeartbeatsURL)
 	viper.Set("reports_api_url", cfg.ReportsURL)
+	viper.Set("analytics_api_url", cfg.AnalyticsURL)
 	viper.Set("api_key", cfg.APIKey)
 	if err := viper.WriteConfigAs(configPath()); err != nil {
 		return err
@@ -152,6 +156,22 @@ func GetHeartbeatsURL(flagOverride string) string {
 		return cfg.HeartbeatsURL
 	}
 	return DefaultHeartbeatsURL
+}
+
+// GetAnalyticsURL returns the check history service base URL (results,
+// summaries and exports of healthchecks and heartbeats).
+func GetAnalyticsURL(flagOverride string) string {
+	if flagOverride != "" {
+		return flagOverride
+	}
+	if envURL := os.Getenv("UPTIMYCTL_ANALYTICS_API_URL"); envURL != "" {
+		return envURL
+	}
+	cfg := Load()
+	if cfg.AnalyticsURL != "" {
+		return cfg.AnalyticsURL
+	}
+	return DefaultAnalyticsURL
 }
 
 // GetReportsURL returns the reports service base URL (/v1/api/reports).
