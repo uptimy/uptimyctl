@@ -27,3 +27,18 @@ func TestParseSince(t *testing.T) {
 		}
 	}
 }
+
+func TestSeriesStep(t *testing.T) {
+	for span, want := range map[time.Duration]string{
+		2 * time.Hour:        "1m",
+		6 * time.Hour:        "1m",
+		24 * time.Hour:       "1h",
+		30 * 24 * time.Hour:  "1h", // 720 buckets
+		90 * 24 * time.Hour:  "1d",
+		400 * 24 * time.Hour: "1d",
+	} {
+		if got := seriesStep(span); got != want {
+			t.Errorf("seriesStep(%s) = %s, want %s", span, got, want)
+		}
+	}
+}

@@ -106,7 +106,7 @@ uptimyctl status-pages groups create <status-page-uuid> -f group.json -o json
 
 # 4. Verify: trigger a check and read its results
 uptimyctl healthchecks trigger <hc-uuid> -o json
-uptimyctl analytics executions <hc-uuid> -o json   # defaults to last 24h
+uptimyctl analytics results <hc-uuid> --from 10m -o json   # the newest runs, the triggered one first
 ```
 
 ## Guarding Scheduled Jobs with Heartbeats
