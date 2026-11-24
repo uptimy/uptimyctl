@@ -4,14 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/uptimy/uptimyctl/internal/output"
 )
-
-func nowISO() string {
-	return time.Now().UTC().Format(time.RFC3339)
-}
 
 // readJSONInput reads a JSON payload from a file path, or stdin when path is "-".
 func readJSONInput(path string) (interface{}, error) {
