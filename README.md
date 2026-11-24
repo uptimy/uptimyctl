@@ -176,12 +176,10 @@ uptimyctl analytics results <healthcheck-uuid> --failures --from 7d --all
 uptimyctl analytics summary <healthcheck-uuid> --by-region --compare   # exact p50/p95/p99, failure causes
 uptimyctl analytics export <healthcheck-uuid> --from 30d --file results.csv   # CSV or --format ndjson, 31 days a file
 
-# Per-region rollups of the last weeks; default the last 24 hours
-uptimyctl analytics minute-region <healthcheck-uuid> --scheduler <scheduler-uuid>
-uptimyctl analytics minute-breakdown <healthcheck-uuid>
-uptimyctl analytics hour-region <healthcheck-uuid> --from 2026-07-01T00:00:00Z --to 2026-07-08T00:00:00Z
-uptimyctl analytics daily-region <healthcheck-uuid>
-uptimyctl analytics monthly-region <healthcheck-uuid>
+# Checks, uptime and exact percentiles per minute, hour, day or month (step follows the range)
+uptimyctl analytics series <healthcheck-uuid>                   # last 24 hours, hourly
+uptimyctl analytics series <healthcheck-uuid> --from 2h --by-region --phases
+uptimyctl analytics series <healthcheck-uuid> --from 90d --step 1d --tz Europe/Berlin
 ```
 
 ### Incidents
