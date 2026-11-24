@@ -60,6 +60,12 @@ on stdin.`,
 			cfg.ReportsURL = config.DefaultReportsURL
 		}
 
+		if cmd.Flags().Changed("analytics-api-url") {
+			cfg.AnalyticsURL = flagAnalyticsURL
+		} else if cfg.AnalyticsURL == "" {
+			cfg.AnalyticsURL = config.DefaultAnalyticsURL
+		}
+
 		keyInput, err := readLoginKey(cmd, reader, cfg.APIURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)

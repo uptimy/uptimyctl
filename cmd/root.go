@@ -16,6 +16,7 @@ var (
 	flagIncidentsAPIURL string
 	flagHeartbeatsURL   string
 	flagReportsURL      string
+	flagAnalyticsURL    string
 	flagOutput          string
 )
 
@@ -39,6 +40,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&flagIncidentsAPIURL, "incidents-api-url", "", "API base URL for incidents and maintenances (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVar(&flagHeartbeatsURL, "heartbeats-api-url", "", "API base URL for heartbeats (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVar(&flagReportsURL, "reports-api-url", "", "API base URL for uptime reports (overrides config file and env)")
+	rootCmd.PersistentFlags().StringVar(&flagAnalyticsURL, "analytics-api-url", "", "API base URL for check history: results, summaries, exports (overrides config file and env)")
 	rootCmd.PersistentFlags().StringVarP(&flagOutput, "output", "o", "table", "Output format: table, json")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -76,6 +78,16 @@ func newHeartbeatsClient() *client.Client {
 		exit(1)
 	}
 	return client.New(config.GetHeartbeatsURL(flagHeartbeatsURL), apiKey)
+}
+
+// newAnalyticsClient builds a client pointed at the check history service.
+func newAnalyticsClient() *client.Client {
+	apiKey := config.GetAPIKey(flagAPIKey)
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: no API key configured. Run 'uptimyctl auth login' or set --api-key.")
+		exit(1)
+	}
+	return client.New(config.GetAnalyticsURL(flagAnalyticsURL), apiKey)
 }
 
 // newReportsClient builds a client pointed at the reports service.

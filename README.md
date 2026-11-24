@@ -169,8 +169,14 @@ uptimyctl status-pages groups delete <status-page-uuid> <group-uuid>
 ### Analytics
 
 ```bash
-# Defaults to the last 24 hours; --from/--to take RFC3339 timestamps
-uptimyctl analytics executions <healthcheck-uuid>
+# Check history: every result, as far back as your plan's window.
+# --from/--to take RFC3339 timestamps or a duration back from now (12h, 7d)
+uptimyctl analytics results <healthcheck-uuid>                  # newest first, 100 a page
+uptimyctl analytics results <healthcheck-uuid> --failures --from 7d --all
+uptimyctl analytics summary <healthcheck-uuid> --by-region --compare   # exact p50/p95/p99, failure causes
+uptimyctl analytics export <healthcheck-uuid> --from 30d --file results.csv   # CSV or --format ndjson, 31 days a file
+
+# Per-region rollups of the last weeks; default the last 24 hours
 uptimyctl analytics minute-region <healthcheck-uuid> --scheduler <scheduler-uuid>
 uptimyctl analytics minute-breakdown <healthcheck-uuid>
 uptimyctl analytics hour-region <healthcheck-uuid> --from 2026-07-01T00:00:00Z --to 2026-07-08T00:00:00Z
@@ -246,6 +252,7 @@ uptimyctl heartbeats pause <uuid>
 uptimyctl heartbeats resume <uuid>
 uptimyctl heartbeats ping <uuid>                         # send a test check-in
 uptimyctl heartbeats tag <uuid> --tag production,cron    # replace its tags; --clear removes them
+uptimyctl heartbeats export <uuid> --from 30d --file runs.csv   # its runs (ended cycles), CSV or --format ndjson
 uptimyctl heartbeats delete <uuid>
 ```
 
@@ -328,6 +335,7 @@ uptimyctl version
 | `--incidents-api-url` | API base URL for incidents and maintenances (overrides config and env) |
 | `--heartbeats-api-url` | API base URL for heartbeats (overrides config and env) |
 | `--reports-api-url` | API base URL for uptime reports (overrides config and env) |
+| `--analytics-api-url` | API base URL for check history: results, summaries, exports (overrides config and env) |
 | `-o, --output` | Output format: `table` (default), `json` |
 
 ## Automation
@@ -372,6 +380,7 @@ Environment variables override the config file:
 | `UPTIMYCTL_INCIDENTS_API_URL` | API base URL for incidents and maintenances |
 | `UPTIMYCTL_HEARTBEATS_API_URL` | API base URL for heartbeats |
 | `UPTIMYCTL_REPORTS_API_URL` | API base URL for uptime reports |
+| `UPTIMYCTL_ANALYTICS_API_URL` | API base URL for check history |
 
 ## Help & support
 
