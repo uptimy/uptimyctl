@@ -3,10 +3,10 @@ module github.com/uptimy/uptimyctl
 go 1.25.3
 
 require (
-	github.com/rodaine/table v1.3.1
+	github.com/rodaine/table v1.4.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	go.yaml.in/yaml/v3 v3.0.4
+	go.yaml.in/yaml/v3 v3.0.5
 )
 
 require (
